@@ -1,0 +1,47 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+    "hatchling",
+]
+
+[project]
+name = "aa-pi-tracker"
+description = "Alliance Auth plugin for EVE Online Planetary Interaction planning"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "GurkeTonic", email = "pberbuir@googlemail.com" },
+]
+requires-python = ">=3.10,<3.14"
+classifiers = [
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 5.2",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+dynamic = [
+    "version",
+]
+dependencies = [
+    "allianceauth>=5",
+    "django-esi>=4.0.0",
+]
+
+[project.entry-points."allianceauth.app"]
+aa_pi_tracker = "aa_pi_tracker.apps:AaPiTrackerConfig"
+
+[tool.hatch]
+version.path = "aa_pi_tracker/__init__.py"
+build.include = [
+    "/aa_pi_tracker",
+]

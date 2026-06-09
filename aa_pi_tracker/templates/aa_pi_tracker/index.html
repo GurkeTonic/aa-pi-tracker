@@ -1,0 +1,671 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+
+{% block page_title %}PI Tracker{% endblock %}
+
+{% block header_nav_brand %}Planetary Interaction{% endblock %}
+
+{% block header_nav_collapse_left %}
+<li class="nav-item">
+  <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-extractors" type="button" id="tab-btn-extractors">
+    Extractors
+  </button>
+</li>
+<li class="nav-item">
+  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-planets" type="button">
+    Planets
+  </button>
+</li>
+<li class="nav-item">
+  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-projects" type="button" id="tab-btn-projects">
+    Projects
+  </button>
+</li>
+<li class="nav-item">
+  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-characters" type="button">
+    Characters <span class="badge bg-secondary">{{ owners_info|length }}</span>
+  </button>
+</li>
+{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm">
+    + Charakter hinzufügen
+  </a>
+</li>
+<li class="nav-item ms-1">
+  <button class="btn btn-secondary btn-sm" id="btn-sync">
+    <i class="fas fa-sync"></i> Sync
+  </button>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  {% if messages %}
+  <div class="mt-2">
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show py-2" role="alert">
+      {{ msg }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not owners_info %}
+  <div class="alert alert-info mt-3">
+    Kein Charakter hinterlegt. Klicke auf <strong>+ Charakter hinzufügen</strong> und authorisiere den ESI-Scope <code>esi-planets.manage_planets.v1</code>.
+  </div>
+  {% endif %}
+
+  <div class="tab-content mt-3" id="piTabContent">
+
+    <!-- ── Extractors ─────────────────────────────────────────────────── -->
+    <div class="tab-pane fade show active" id="tab-extractors">
+      <table id="tbl-extractors" class="table table-sm table-striped table-hover" style="width:100%">
+        <thead>
+          <tr>
+            <th>Charaktere</th>
+            <th>Planet</th>
+            <th>Upgrade Level</th>
+            <th>Produkt</th>
+            <th>Progress</th>
+            <th>Abgelaufen</th>
+            <th>Cycle Time</th>
+            <th>Qty/Cycle</th>
+            <th>Qty/Hour</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ext in extractors %}
+          <tr>
+            <td>{{ ext.character }}</td>
+            <td>
+              <span class="badge bg-secondary me-1">{{ ext.planet_type }}</span>
+              {{ ext.planet_name }}
+            </td>
+            <td class="text-center">{{ ext.upgrade_level }}</td>
+            <td>{{ ext.product }}</td>
+            <td>
+              <div class="progress" style="min-width:120px">
+                <div class="progress-bar {% if ext.expired %}bg-danger{% else %}bg-success{% endif %}"
+                     style="width:{{ ext.progress }}%">{{ ext.progress }}%</div>
+              </div>
+            </td>
+            <td>{% if ext.expiry_time %}{{ ext.expiry_time|date:"m/d/Y" }}{% else %}—{% endif %}</td>
+            <td>{{ ext.cycle_time_display }}</td>
+            <td>{{ ext.qty_per_cycle|floatformat:0 }}</td>
+            <td>{{ ext.qty_per_hour|floatformat:0 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9" class="text-center text-muted">Keine Extraktoren vorhanden</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Planets ────────────────────────────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-planets">
+      <table id="tbl-planets" class="table table-sm table-striped table-hover" style="width:100%">
+        <thead>
+          <tr>
+            <th>Charaktere</th>
+            <th>Planet</th>
+            <th>Assigned To Project</th>
+            <th>Content</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in all_planets %}
+          <tr>
+            <td>{{ row.owner.character.character_name }}</td>
+            <td>
+              <span class="badge bg-secondary me-1">{{ row.planet.get_planet_type_display }}</span>
+              {{ row.planet.planet_name }}
+            </td>
+            <td>
+              {% for proj in row.assigned_projects %}
+              <span class="badge" style="background:#0d6efd">{{ proj|upper }}</span>
+              {% endfor %}
+            </td>
+            <td>
+              {% for name, cnt in row.content_extractors.items %}
+              <small class="me-2 text-muted">{{ name }} (P0)</small>
+              {% endfor %}
+              {% for name, cnt in row.content_factories.items %}
+              <small class="me-2 text-info">{{ name }} ×{{ cnt }}</small>
+              {% endfor %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted">Keine Planeten vorhanden</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Projects ───────────────────────────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-projects">
+      <div class="row g-0">
+        <!-- Left sidebar: project list -->
+        <div class="col-auto border-end pe-3 me-3" style="min-width:200px;max-width:250px">
+          <div class="mb-3 d-flex justify-content-between align-items-center">
+            <strong>Overview</strong>
+            <button class="btn btn-sm btn-outline-primary" id="btn-new-project" title="Neues Projekt">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+          <ul class="list-unstyled" id="project-list">
+            {% for proj in projects %}
+            <li class="mb-1">
+              <a href="?project={{ proj.pk }}"
+                 class="d-block px-2 py-1 rounded text-decoration-none {% if selected_project.pk == proj.pk %}bg-secondary text-white{% else %}text-body{% endif %}">
+                {{ proj.name }}
+              </a>
+            </li>
+            {% empty %}
+            <li class="text-muted small">Keine Projekte</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- Right panel -->
+        <div class="col" id="project-detail">
+          {% if selected_project %}
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h5 class="mb-0">{{ selected_project.name }}</h5>
+              {% if selected_project.description %}
+              <small class="text-muted">{{ selected_project.description }}</small>
+              {% endif %}
+            </div>
+            <button class="btn btn-sm btn-outline-danger btn-delete-project" data-pk="{{ selected_project.pk }}">
+              <i class="fas fa-trash"></i> Löschen
+            </button>
+          </div>
+
+          <div class="row mb-3">
+            <!-- Objectives -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-center mb-2">
+                <strong>Objectives</strong>
+                <button class="btn btn-sm btn-outline-primary ms-2 btn-add-objective" data-pk="{{ selected_project.pk }}">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+              <table id="tbl-objectives" class="table table-sm table-striped" style="width:100%">
+                <thead><tr><th>Schematic</th><th>Target Qty (/h)</th><th></th></tr></thead>
+                <tbody>
+                  {% for obj in selected_project.objectives.all %}
+                  <tr>
+                    <td>{{ obj.schematic_name }}</td>
+                    <td>{{ obj.target_qty_per_hour }}</td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-secondary btn-edit-objective me-1"
+                              data-pk="{{ obj.pk }}"
+                              data-schematic="{{ obj.schematic_name }}"
+                              data-qty="{{ obj.target_qty_per_hour }}">
+                        <i class="fas fa-pen"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger btn-del-objective" data-pk="{{ obj.pk }}">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="3" class="text-muted text-center">Kein Objective</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Assigned Planets -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-center mb-2">
+                <strong>Assigned Planets</strong>
+                <button class="btn btn-sm btn-outline-primary ms-2 btn-add-planet"
+                        data-pk="{{ selected_project.pk }}"
+                        data-assigned="{% for pp in selected_project.assigned_planets.all %}{{ pp.planet.pk }},{% endfor %}">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+              <table id="tbl-assigned-planets" class="table table-sm table-striped" style="width:100%">
+                <thead><tr><th>Charaktere</th><th>Planet</th><th></th></tr></thead>
+                <tbody>
+                  {% for pp in selected_project.assigned_planets.all %}
+                  <tr>
+                    <td>{{ pp.planet.owner.character.character_name }}</td>
+                    <td>{{ pp.planet.planet_name }} ({{ pp.planet.get_planet_type_display }})</td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-danger btn-remove-planet" data-pk="{{ pp.pk }}">
+                        <i class="fas fa-minus"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="3" class="text-muted text-center">Kein Planet</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {% if project_data %}
+          <div class="row">
+            <div class="col-12 mb-3">
+              <strong>Fabrication</strong>
+              <table id="tbl-fabrication" class="table table-sm table-striped mt-1" style="width:100%">
+                <thead>
+                  <tr>
+                    <th>Schematic</th><th>Tier</th>
+                    <th>Factories Needed</th><th>Actual Factories</th><th>Missing Factories</th>
+                    <th>Production Needed (/h)</th><th>Actual Production (/h)</th><th>Missing Production</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in project_data.fabrication %}
+                  <tr>
+                    <td>{{ row.schematic }}</td>
+                    <td>{{ row.tier }}</td>
+                    <td>{{ row.factories_needed }}</td>
+                    <td>{{ row.actual_factories }}</td>
+                    <td class="{% if row.missing_factories >= 0 %}text-success{% else %}text-danger{% endif %}">{{ row.missing_factories }}</td>
+                    <td>{{ row.production_needed }}</td>
+                    <td>{{ row.actual_production }}</td>
+                    <td class="{% if row.missing_production >= 0 %}text-success{% else %}text-danger{% endif %}">{{ row.missing_production }}</td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="8" class="text-muted text-center">Kein Objective definiert</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="col-12">
+              <strong>Extraction</strong>
+              <table id="tbl-extraction" class="table table-sm table-striped mt-1" style="width:100%">
+                <thead>
+                  <tr>
+                    <th>Resource</th>
+                    <th>Extraction Needed (/h)</th>
+                    <th>Actual Extraction (/h)</th>
+                    <th>Missing Extraction</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in project_data.extraction %}
+                  <tr>
+                    <td>{{ row.resource }}</td>
+                    <td>{{ row.extraction_needed }}</td>
+                    <td>{{ row.actual_extraction }}</td>
+                    <td class="{% if row.missing_extraction >= 0 %}text-success{% else %}text-danger{% endif %}">{{ row.missing_extraction }}</td>
+                  </tr>
+                  {% empty %}
+                  <tr><td colspan="4" class="text-muted text-center">—</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% endif %}
+
+          {% else %}
+          <div class="text-muted mt-2">Wähle ein Projekt aus der Liste oder erstelle ein neues.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Characters ─────────────────────────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-characters">
+      <table id="tbl-characters" class="table table-sm table-striped" style="width:100%">
+        <thead>
+          <tr>
+            <th>Charakter</th>
+            <th>Planeten</th>
+            <th>Letzter Sync</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for info in owners_info %}
+          <tr>
+            <td>{{ info.owner.character.character_name }}</td>
+            <td>{{ info.planet_count }}</td>
+            <td>{% if info.last_sync %}{{ info.last_sync|date:"d.m.Y H:i" }} UTC{% else %}<span class="text-muted">noch kein Sync</span>{% endif %}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger btn-remove-char" data-pk="{{ info.owner.pk }}">
+                <i class="fas fa-trash"></i> Entfernen
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted">Kein Charakter hinterlegt</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus"></i> Charakter hinzufügen
+      </a>
+    </div>
+
+  </div><!-- /tab-content -->
+</div>
+
+<!-- Modal: Add Objective -->
+<div class="modal fade" id="modal-add-objective" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-bullseye me-1"></i> Add new Objective</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Schematic <span class="text-danger">*</span></label>
+          <select class="form-select" id="obj-schematic">
+            <option value="">--</option>
+            {% for group_label, choices in schematic_choices %}
+            <optgroup label="{{ group_label }}">
+              {% for val, label in choices %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Target Quantity (/h) <span class="text-danger">*</span></label>
+          <select class="form-select" id="obj-qty">
+            {% for qty in target_qty_choices %}
+            <option value="{{ qty }}">{{ qty }}/h</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="btn-submit-objective">
+          <i class="fas fa-check"></i> Submit
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Objective -->
+<div class="modal fade" id="modal-edit-objective" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-pen me-1"></i> Objective bearbeiten</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Schematic</label>
+          <input type="text" class="form-control" id="edit-obj-schematic" readonly>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Target Quantity (/h)</label>
+          <select class="form-select" id="edit-obj-qty">
+            {% for qty in target_qty_choices %}
+            <option value="{{ qty }}">{{ qty }}/h</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-success" id="btn-submit-edit-objective">
+          <i class="fas fa-check"></i> Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Planet -->
+<div class="modal fade" id="modal-add-planet" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-globe me-1"></i> Planet zuweisen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-bold">Planet</label>
+        <select class="form-select" id="planet-select"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-success" id="btn-submit-planet">
+          <i class="fas fa-check"></i> Zuweisen
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: New Project -->
+<div class="modal fade" id="modal-new-project" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-folder-plus me-1"></i> Neues Projekt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="new-project-name" placeholder="z.B. Wetware">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Beschreibung</label>
+          <input type="text" class="form-control" id="new-project-desc" placeholder="Optional">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-success" id="btn-submit-new-project">
+          <i class="fas fa-check"></i> Erstellen
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_javascript %}
+<script>
+(function () {
+  "use strict";
+
+  const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "";
+
+  function post(url, data) {
+    const fd = new FormData();
+    fd.append("csrfmiddlewaretoken", csrfToken);
+    for (const [k, v] of Object.entries(data)) fd.append(k, v);
+    return fetch(url, { method: "POST", body: fd }).then(r => r.json());
+  }
+
+  function reload(projectPk) {
+    window.location.href = "?project=" + projectPk;
+  }
+
+  const _activePk = () => _currentProjectPk ?? new URLSearchParams(window.location.search).get("project");
+
+  // DataTables
+  const dtOpts = { pageLength: 25, language: { search: "Search:" } };
+  document.addEventListener("DOMContentLoaded", function () {
+    $("#tbl-extractors").DataTable({ ...dtOpts });
+    $("#tbl-planets").DataTable({ ...dtOpts });
+    $("#tbl-characters").DataTable({ ...dtOpts, pageLength: 10 });
+    if (document.getElementById("tbl-objectives")) {
+      $("#tbl-objectives").DataTable({ paging: false, searching: false, info: false });
+      $("#tbl-assigned-planets").DataTable({ paging: false, searching: false, info: false });
+    }
+    if (document.getElementById("tbl-fabrication")) {
+      $("#tbl-fabrication").DataTable({ paging: false, searching: false, info: false, order: [[1, "desc"]] });
+      $("#tbl-extraction").DataTable({ paging: false, searching: false, info: false });
+    }
+  });
+
+  // Activate Projects tab if ?project= in URL
+  if (window.location.search.includes("project=")) {
+    const btn = document.getElementById("tab-btn-projects");
+    if (btn) new bootstrap.Tab(btn).show();
+  }
+
+  // Sync
+  document.getElementById("btn-sync")?.addEventListener("click", function () {
+    post("{% url 'aa_pi_tracker:trigger_sync' %}", {}).then(() => {
+      this.innerHTML = '<i class="fas fa-check"></i> Sync gestartet';
+      setTimeout(() => { this.innerHTML = '<i class="fas fa-sync"></i> Sync'; }, 3000);
+    });
+  });
+
+  // Remove character
+  document.querySelectorAll(".btn-remove-char").forEach(btn => {
+    btn.addEventListener("click", function () {
+      if (!confirm("Charakter und alle zugehörigen Planetendaten entfernen?")) return;
+      post("{% url 'aa_pi_tracker:remove_character' %}", { owner_pk: this.dataset.pk })
+        .then(() => window.location.reload());
+    });
+  });
+
+  // New project
+  let _newProjectModal = null;
+  document.getElementById("btn-new-project")?.addEventListener("click", function () {
+    document.getElementById("new-project-name").value = "";
+    document.getElementById("new-project-desc").value = "";
+    _newProjectModal = new bootstrap.Modal(document.getElementById("modal-new-project"));
+    _newProjectModal.show();
+  });
+  document.getElementById("btn-submit-new-project")?.addEventListener("click", function () {
+    const name = document.getElementById("new-project-name").value.trim();
+    const desc = document.getElementById("new-project-desc").value.trim();
+    if (!name) return;
+    post("{% url 'aa_pi_tracker:create_project' %}", { name, description: desc }).then(r => {
+      if (r.ok) { _newProjectModal?.hide(); reload(r.pk); }
+      else alert(r.error);
+    });
+  });
+
+  // Delete project
+  document.querySelectorAll(".btn-delete-project").forEach(btn => {
+    btn.addEventListener("click", function () {
+      if (!confirm("Projekt löschen?")) return;
+      const url = "{% url 'aa_pi_tracker:delete_project' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
+      post(url, {}).then(() => { window.location.href = window.location.pathname; });
+    });
+  });
+
+  // Add objective
+  let _addObjectiveModal = null;
+  let _currentProjectPk = null;
+  document.querySelectorAll(".btn-add-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      _currentProjectPk = this.dataset.pk;
+      document.getElementById("obj-schematic").value = "";
+      document.getElementById("obj-qty").value = "1";
+      _addObjectiveModal = new bootstrap.Modal(document.getElementById("modal-add-objective"));
+      _addObjectiveModal.show();
+    });
+  });
+  document.getElementById("btn-submit-objective")?.addEventListener("click", function () {
+    const schematic = document.getElementById("obj-schematic").value;
+    const qty = document.getElementById("obj-qty").value;
+    if (!schematic || !_currentProjectPk) return;
+    const url = "{% url 'aa_pi_tracker:add_objective' 0 %}".replace("/0/", "/" + _currentProjectPk + "/");
+    post(url, { schematic_name: schematic, target_qty_per_hour: qty }).then(r => {
+      if (r.ok) { _addObjectiveModal?.hide(); reload(_activePk()); }
+      else alert(r.error);
+    });
+  });
+
+  // Edit objective
+  let _editObjectiveModal = null;
+  let _editObjectivePk = null;
+  document.querySelectorAll(".btn-edit-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      _editObjectivePk = this.dataset.pk;
+      document.getElementById("edit-obj-schematic").value = this.dataset.schematic;
+      const qtySelect = document.getElementById("edit-obj-qty");
+      qtySelect.value = this.dataset.qty;
+      _editObjectiveModal = new bootstrap.Modal(document.getElementById("modal-edit-objective"));
+      _editObjectiveModal.show();
+    });
+  });
+  document.getElementById("btn-submit-edit-objective")?.addEventListener("click", function () {
+    const qty = document.getElementById("edit-obj-qty").value;
+    const url = "{% url 'aa_pi_tracker:edit_objective' 0 %}".replace("/0/", "/" + _editObjectivePk + "/");
+    post(url, { target_qty_per_hour: qty }).then(r => {
+      if (r.ok) { _editObjectiveModal?.hide(); reload(_activePk()); }
+    });
+  });
+
+  // Delete objective
+  document.querySelectorAll(".btn-del-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const url = "{% url 'aa_pi_tracker:delete_objective' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
+      post(url, {}).then(r => { if (r.ok) reload(_activePk()); });
+    });
+  });
+
+  // All planets for planet modal filtering
+  const _allPlanets = [
+    {% for row in all_planets %}
+    { pk: "{{ row.planet.pk }}", label: "{{ row.owner.character.character_name }} — {{ row.planet.planet_name }} ({{ row.planet.get_planet_type_display }})" },
+    {% endfor %}
+  ];
+
+  // Add planet
+  let _addPlanetModal = null;
+  document.querySelectorAll(".btn-add-planet").forEach(btn => {
+    btn.addEventListener("click", function () {
+      _currentProjectPk = this.dataset.pk;
+      const assigned = new Set((this.dataset.assigned || "").split(",").filter(Boolean));
+      const sel = document.getElementById("planet-select");
+      sel.innerHTML = '<option value="">-- Planet wählen --</option>';
+      const available = _allPlanets.filter(p => !assigned.has(p.pk));
+      available.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.pk;
+        opt.textContent = p.label;
+        sel.appendChild(opt);
+      });
+      if (!available.length) {
+        const opt = document.createElement("option");
+        opt.disabled = true;
+        opt.textContent = "Alle Planeten bereits zugewiesen";
+        sel.appendChild(opt);
+      }
+      _addPlanetModal = new bootstrap.Modal(document.getElementById("modal-add-planet"));
+      _addPlanetModal.show();
+    });
+  });
+  document.getElementById("btn-submit-planet")?.addEventListener("click", function () {
+    const planetPk = document.getElementById("planet-select").value;
+    if (!planetPk || !_currentProjectPk) return;
+    const url = "{% url 'aa_pi_tracker:add_project_planet' 0 %}".replace("/0/", "/" + _currentProjectPk + "/");
+    post(url, { planet_pk: planetPk }).then(r => {
+      if (r.ok) { _addPlanetModal?.hide(); reload(_activePk()); }
+      else alert(r.error);
+    });
+  });
+
+  // Remove planet
+  document.querySelectorAll(".btn-remove-planet").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const url = "{% url 'aa_pi_tracker:remove_project_planet' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
+      post(url, {}).then(r => { if (r.ok) reload(_activePk()); });
+    });
+  });
+}());
+</script>
+{% endblock %}
