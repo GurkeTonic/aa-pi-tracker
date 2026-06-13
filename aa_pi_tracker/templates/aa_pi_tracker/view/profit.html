@@ -1,0 +1,338 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters static %}
+
+{% block page_title %}{% trans "PI Tracker — Profit Calculator" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <button class="btn btn-outline-secondary btn-sm" id="btn-sync-prices"><i class="fas fa-sync"></i> {% trans "Sync Prices" %}</button>
+</li>
+{% endblock %}
+
+{% block content %}
+{% trans "Profit Calculator" as page_title %}{% include "framework/header/page-header.html" with title=page_title %}
+<div class="container-fluid mt-3">
+
+  <div class="text-muted small mb-3">
+    {% trans "Jita 4-4 buy prices" %} &nbsp;·&nbsp;
+    {% if price_updated_at %}{% blocktrans with dt=price_updated_at|date:"d M Y H:i" %}Updated {{ dt }} UTC{% endblocktrans %}{% else %}<span class="text-warning">{% trans "Not synced" %}</span>{% endif %}
+  </div>
+
+  {% if not prices_synced %}
+  <div class="aa-callout aa-callout-info mb-3">
+    <i class="fas fa-info-circle me-1"></i>{% blocktrans %}No price data. Click <strong>Sync Prices</strong> in the top bar to fetch from Fuzzwork.{% endblocktrans %}
+  </div>
+  {% endif %}
+
+  {% if profit_data %}
+  {{ profit_data|json_script:"profit-data" }}
+
+  <!-- Controls -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <div class="row align-items-center g-2">
+        <div class="col-auto">
+          <label class="form-label mb-0 fw-bold">{% trans "POCO Export Tax" %}</label>
+        </div>
+        <div class="col-auto">
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="profit-tax-rate" value="10" min="0" max="100" step="0.5" style="width:80px">
+            <span class="input-group-text">%</span>
+          </div>
+        </div>
+        <div class="col-auto text-muted small">{% trans "Profit = Output value × (1 − POCO%) — P0 not costed (no market price for raw resources)" %}</div>
+        <div class="col-auto ms-auto d-flex align-items-center gap-2">
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="checkbox" id="profit-hide-loss">
+            <label class="form-check-label small" for="profit-hide-loss">{% trans "Hide unprofitable" %}</label>
+          </div>
+          <select class="form-select form-select-sm" id="profit-tier-filter" style="width:auto">
+            <option value="">{% trans "All Tiers" %}</option>
+            <option value="1">{% trans "P1 only" %}</option>
+            <option value="2">{% trans "P2 only" %}</option>
+            <option value="3">{% trans "P3 only" %}</option>
+            <option value="4">{% trans "P4 only" %}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <table class="table table-sm table-hover mb-0" id="profit-table">
+        <thead class="table-dark">
+          <tr>
+            <th style="width:30px"></th>
+            <th class="profit-sort-hdr" data-col="name" style="cursor:pointer">{% trans "Schematic" %} <span class="sort-icon text-muted">⇅</span></th>
+            <th class="text-center profit-sort-hdr" data-col="tier" style="cursor:pointer">{% trans "Tier" %} <span class="sort-icon text-muted">⇅</span></th>
+            <th class="text-end">{% trans "Cycle" %}</th>
+            <th class="text-end profit-sort-hdr" data-col="input" style="cursor:pointer" title="{% trans 'Implied P0 opportunity cost — P0 not sold, value derived from P1 output price' %}">{% trans "P0 implied/h" %} <span class="sort-icon text-muted">⇅</span></th>
+            <th class="text-end profit-sort-hdr" data-col="output" style="cursor:pointer">{% trans "Output val/h" %} <span class="sort-icon text-muted">⇅</span></th>
+            <th class="text-end fw-bold profit-sort-hdr" data-col="profit" style="cursor:pointer">{% trans "Profit/h" %} <span class="sort-icon text-muted">▼</span></th>
+            <th class="text-end profit-sort-hdr" data-col="margin" style="cursor:pointer">{% trans "Margin" %} <span class="sort-icon text-muted">⇅</span></th>
+          </tr>
+        </thead>
+        <tbody id="profit-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+{% if profit_data %}
+<script>
+(function () {
+  "use strict";
+
+  const profitData = JSON.parse(document.getElementById("profit-data").textContent);
+
+  // Build prices lookup
+  const prices = {};
+  profitData.forEach(row => {
+    prices[row.name] = row.output_unit_price;
+    row.inputs.forEach(inp => { prices[inp.name] = inp.unit_price; });
+  });
+
+  const tierBadge = {
+    1: '<span class="badge bg-info text-dark">P1</span>',
+    2: '<span class="badge bg-primary">P2</span>',
+    3: '<span class="badge bg-warning text-dark">P3</span>',
+    4: '<span class="badge bg-danger">P4</span>',
+  };
+
+  // Sort state — default: profit descending
+  let sortCol = "profit";
+  let sortDir = -1; // -1 = desc, +1 = asc
+
+  function getSortValue(row, col) {
+    const taxMult = 1 - (parseFloat(document.getElementById("profit-tax-rate").value) || 0) / 100;
+    switch (col) {
+      case "name":   return row.name.toLowerCase();
+      case "tier":   return row.tier;
+      case "input":  return row.input_cost_per_hour;
+      case "output": return row.output_value_per_hour * taxMult;
+      case "profit": return row.output_value_per_hour * taxMult - row.input_cost_per_hour;
+      case "margin": {
+        const out = row.output_value_per_hour * taxMult;
+        return out > 0 ? (out - row.input_cost_per_hour) / out : 0;
+      }
+      default: return 0;
+    }
+  }
+
+  function sortedData() {
+    return [...profitData].sort((a, b) => {
+      const va = getSortValue(a, sortCol);
+      const vb = getSortValue(b, sortCol);
+      if (va < vb) return -sortDir;
+      if (va > vb) return sortDir;
+      return 0;
+    });
+  }
+
+  function updateSortHeaders() {
+    document.querySelectorAll(".profit-sort-hdr").forEach(th => {
+      const col = th.dataset.col;
+      const icon = th.querySelector(".sort-icon");
+      if (!icon) return;
+      if (col === sortCol) {
+        icon.textContent = sortDir === -1 ? "▼" : "▲";
+        icon.classList.remove("text-muted");
+        icon.classList.add("text-warning");
+      } else {
+        icon.textContent = "⇅";
+        icon.classList.add("text-muted");
+        icon.classList.remove("text-warning");
+      }
+    });
+  }
+
+  function buildRows() {
+    const tbody = document.getElementById("profit-tbody");
+    tbody.innerHTML = "";
+    sortedData().forEach((row, i) => {
+      const tr = document.createElement("tr");
+      tr.className = "profit-row";
+      tr.dataset.tier = row.tier;
+      tr.dataset.outputRaw = row.output_value_per_hour;
+      tr.dataset.inputRaw = row.input_cost_per_hour;
+      tr.dataset.name = row.name;
+      tr.innerHTML = `
+        <td class="text-center align-middle">
+          <button class="btn btn-link btn-sm p-0 profit-expand-btn" type="button" title="Show details">
+            <i class="fas fa-chevron-right small text-secondary"></i>
+          </button>
+        </td>
+        <td class="fw-bold align-middle">${row.name}</td>
+        <td class="text-center align-middle">${tierBadge[row.tier] || ""}</td>
+        <td class="text-end align-middle small text-muted">${row.cycle_time_s}s</td>
+        <td class="text-end align-middle profit-input-col">—</td>
+        <td class="text-end align-middle profit-output-col">—</td>
+        <td class="text-end align-middle fw-bold profit-value-col">—</td>
+        <td class="text-end align-middle profit-margin-col">—</td>`;
+      tbody.appendChild(tr);
+
+      // Detail row
+      const detail = document.createElement("tr");
+      detail.className = "profit-detail d-none";
+      detail.style.cssText = "background:rgba(255,255,255,0.04)";
+
+      let inputRows = "";
+      row.inputs.forEach(inp => {
+        const ph = inp.qty_per_cycle * (3600 / row.cycle_time_s) * inp.unit_price;
+        inputRows += `<tr>
+          <td class="text-muted ps-2">${inp.name}</td>
+          <td class="text-end">${inp.qty_per_cycle}×/cycle</td>
+          <td class="text-end text-muted">${fmtIsk(inp.unit_price)}/u</td>
+          <td class="text-end text-danger">${fmtIsk(ph)}/h</td>
+        </tr>`;
+      });
+      const outPh = row.output_qty_per_cycle * (3600 / row.cycle_time_s) * row.output_unit_price;
+      inputRows += `<tr class="table-success fw-bold">
+        <td class="ps-2">▶ ${row.name}</td>
+        <td class="text-end">${row.output_qty_per_cycle}×/cycle</td>
+        <td class="text-end">${fmtIsk(row.output_unit_price)}/u</td>
+        <td class="text-end profit-out-detail"
+            data-outprice="${row.output_unit_price}"
+            data-outqty="${row.output_qty_per_cycle}"
+            data-ct="${row.cycle_time_s}">${fmtIsk(outPh)}/h</td>
+      </tr>`;
+
+      detail.innerHTML = `<td colspan="8" class="p-0">
+        <table class="table table-sm mb-0 small" style="border-left:3px solid #6c757d">
+          <thead><tr class="table-dark">
+            <th class="ps-2">{% trans "P0 Resource" %}</th>
+            <th class="text-end">{% trans "Qty/cycle" %}</th>
+            <th class="text-end">{% trans "Jita buy" %}</th>
+            <th class="text-end" title="{% trans 'Implied value — P0 not sold on market, calculated via P1 output' %}">{% trans "Implied cost/h" %}</th>
+          </tr></thead>
+          <tbody>${inputRows}</tbody>
+        </table></td>`;
+      tbody.appendChild(detail);
+    });
+  }
+
+  function recalculate() {
+    const taxMult = 1 - (parseFloat(document.getElementById("profit-tax-rate").value) || 0) / 100;
+    const hideLoss = document.getElementById("profit-hide-loss").checked;
+    const tierFilter = document.getElementById("profit-tier-filter").value;
+
+    document.querySelectorAll(".profit-row").forEach(tr => {
+      const output = parseFloat(tr.dataset.outputRaw) * taxMult;
+      const input = parseFloat(tr.dataset.inputRaw);
+      const profit = output - input;
+      const margin = output > 0 ? (profit / output * 100) : 0;
+
+      tr.querySelector(".profit-input-col").textContent = fmtIsk(input);
+      tr.querySelector(".profit-output-col").textContent = fmtIsk(output);
+
+      const vc = tr.querySelector(".profit-value-col");
+      vc.textContent = fmtIsk(profit);
+      vc.className = "text-end align-middle fw-bold profit-value-col " + (profit >= 0 ? "text-success" : "text-danger");
+
+      const mc = tr.querySelector(".profit-margin-col");
+      mc.textContent = margin.toFixed(1) + "%";
+      mc.className = "text-end align-middle profit-margin-col " + (margin >= 0 ? "text-success" : "text-danger");
+
+      const show = (!hideLoss || profit >= 0) && (!tierFilter || tr.dataset.tier === tierFilter);
+      tr.classList.toggle("d-none", !show);
+      const detail = tr.nextElementSibling;
+      if (detail?.classList.contains("profit-detail") && !show) {
+        detail.classList.add("d-none");
+      }
+    });
+
+    // Update output values in open detail rows (tax-adjusted)
+    document.querySelectorAll(".profit-out-detail").forEach(el => {
+      const price = parseFloat(el.dataset.outprice);
+      const qty = parseFloat(el.dataset.outqty);
+      const ct = parseFloat(el.dataset.ct);
+      const ph = qty * (3600 / ct) * price * taxMult;
+      el.textContent = fmtIsk(ph) + "/h (after tax)";
+    });
+  }
+
+  // Expand/collapse
+  document.getElementById("profit-tbody").addEventListener("click", function (e) {
+    const btn = e.target.closest(".profit-expand-btn");
+    if (!btn) return;
+    const tr = btn.closest("tr");
+    const detail = tr.nextElementSibling;
+    if (detail?.classList.contains("profit-detail")) {
+      const isOpen = !detail.classList.contains("d-none");
+      detail.classList.toggle("d-none");
+      const icon = btn.querySelector("i");
+      icon.classList.toggle("fa-chevron-right", isOpen);
+      icon.classList.toggle("fa-chevron-down", !isOpen);
+      icon.classList.toggle("text-secondary", isOpen);
+      icon.classList.toggle("text-warning", !isOpen);
+    }
+  });
+
+  // Sort headers
+  document.querySelectorAll(".profit-sort-hdr").forEach(th => {
+    th.addEventListener("click", function () {
+      const col = this.dataset.col;
+      if (sortCol === col) {
+        sortDir = -sortDir;
+      } else {
+        sortCol = col;
+        sortDir = -1; // new column always starts descending
+      }
+      buildRows();
+      recalculate();
+      updateSortHeaders();
+    });
+  });
+
+  document.getElementById("profit-tax-rate").addEventListener("input", () => { buildRows(); recalculate(); });
+  document.getElementById("profit-hide-loss").addEventListener("change", recalculate);
+  document.getElementById("profit-tier-filter").addEventListener("change", recalculate);
+
+  // Initial render
+  updateSortHeaders();
+  buildRows();
+  recalculate();
+
+  // Price sync
+  document.getElementById("btn-sync-prices")?.addEventListener("click", function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> {% trans "Fetching…" %}';
+    fetchPost("{% url 'aa_pi_tracker:trigger_price_sync' %}", {})
+      .then(() => {
+        btn.innerHTML = '<i class="fas fa-check"></i> {% trans "Queued" %}';
+        btn.title = "{% trans 'Price sync queued — data updates within ~30 minutes' %}";
+        setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync Prices" %}'; btn.title = ""; }, 15000);
+      }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync Prices" %}'; });
+  });
+}());
+</script>
+{% else %}
+<script>
+(function () {
+  "use strict";
+  document.getElementById("btn-sync-prices")?.addEventListener("click", function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> {% trans "Fetching…" %}';
+    fetchPost("{% url 'aa_pi_tracker:trigger_price_sync' %}", {})
+      .then(() => {
+        btn.innerHTML = '<i class="fas fa-check"></i> {% trans "Queued" %}';
+        btn.title = "{% trans 'Price sync queued — data updates within ~30 minutes' %}";
+        setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync Prices" %}'; btn.title = ""; }, 15000);
+      }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync Prices" %}'; });
+  });
+}());
+</script>
+{% endif %}
+{% endblock %}

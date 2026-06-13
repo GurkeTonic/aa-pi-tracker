@@ -18,11 +18,23 @@ class AaPiTrackerConfig(AppConfig):
         if not hasattr(settings, "CELERYBEAT_SCHEDULE"):
             settings.CELERYBEAT_SCHEDULE = {}
 
+        # PI data sync — respects ESI 10-minute cache; interval configurable
         settings.CELERYBEAT_SCHEDULE.setdefault(
             "aa_pi_tracker.tasks.sync_all_pi_data",
             {
                 "task": "aa_pi_tracker.tasks.sync_all_pi_data",
                 "schedule": crontab(minute=f"*/{AA_PI_TRACKER_SYNC_INTERVAL}"),
+                "apply_offset": True,
+            },
+        )
+
+        # Market price sync via Fuzzwork — every 30 minutes, configurable
+        from aa_pi_tracker.app_settings import AA_PI_TRACKER_PRICE_INTERVAL
+        settings.CELERYBEAT_SCHEDULE.setdefault(
+            "aa_pi_tracker.tasks.sync_market_prices",
+            {
+                "task": "aa_pi_tracker.tasks.sync_market_prices",
+                "schedule": crontab(minute=f"*/{AA_PI_TRACKER_PRICE_INTERVAL}"),
                 "apply_offset": True,
             },
         )

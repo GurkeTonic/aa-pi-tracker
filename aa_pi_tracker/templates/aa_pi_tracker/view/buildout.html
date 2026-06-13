@@ -1,0 +1,192 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters evelinks %}
+
+{% block page_title %}{% blocktrans with name=project.name %}Build-Out — {{ name }}{% endblocktrans %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block extra_css %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'aa_pi_tracker/css/pi_tracker.css' %}">
+<style>
+.role-miner   { border-left: 4px solid #0dcaf0 !important; }
+.role-factory { border-left: 4px solid #6610f2 !important; }
+.role-factory_p4 { border-left: 4px solid #ffc107 !important; }
+.planet-badge-miner   { background: rgba(13,202,240,.15); color: #0dcaf0; }
+.planet-badge-factory { background: rgba(102,16,242,.15); color: #a98eda; }
+.planet-badge-factory_p4 { background: rgba(255,193,7,.15); color: #ffc107; }
+.layout-pin { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:4px;
+              background: rgba(255,255,255,.06); font-size:.75rem; margin:2px; }
+.aif-row + .aif-row { border-top:1px solid rgba(255,255,255,.06); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Build-Out" %}
+<div class="container-fluid mt-3">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <a href="{% url 'aa_pi_tracker:projects' %}?project={{ project.pk }}"
+       class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>{% trans "Back" %}
+    </a>
+    <div>
+      <h5 class="mb-0 fw-bold"><i class="fas fa-drafting-compass me-2 text-info"></i>{% trans "Build-Out Blueprint" %}</h5>
+      <div class="text-muted small">{{ project.name }} &nbsp;·&nbsp; {{ total_planets }} planet{{ total_planets|pluralize }} across {{ chars_data|length }} pilot{{ chars_data|length|pluralize }}</div>
+    </div>
+  </div>
+
+  {% if not chars_data %}
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    No planets assigned to this project yet.
+    <a href="{% url 'aa_pi_tracker:projects' %}?project={{ project.pk }}">Add planets in the Plan tab.</a>
+  </div>
+  {% else %}
+
+  <!-- Char pill tabs -->
+  <ul class="nav nav-pills mb-3 gap-1" id="buildout-tabs" role="tablist">
+    {% for char in chars_data %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if forloop.first %}active{% endif %} d-flex align-items-center gap-2"
+              id="tab-btn-{{ char.char_id }}"
+              data-bs-toggle="pill"
+              data-bs-target="#tab-char-{{ char.char_id }}"
+              type="button" role="tab">
+        {% if char.char_id %}
+        <img src="{{ char.char_id|character_portrait_url:32 }}"
+             class="rounded-circle" width="20" height="20" alt="">
+        {% else %}
+        <i class="fas fa-user-astronaut text-muted" style="width:20px"></i>
+        {% endif %}
+        <span>{{ char.char_name }}</span>
+        <span class="badge bg-secondary pi-text-xs">{{ char.planets|length }}</span>
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="tab-content">
+    {% for char in chars_data %}
+    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+         id="tab-char-{{ char.char_id }}" role="tabpanel">
+
+      <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+        {% for p in char.planets %}
+        <div class="col">
+          <div class="card h-100 border-0 shadow-sm role-{{ p.role }}">
+            <div class="card-body py-3 px-3">
+
+              <!-- Planet header -->
+              <div class="d-flex align-items-start justify-content-between mb-2">
+                <div>
+                  <div class="fw-semibold small mb-0">
+                    <span class="type-{{ p.planet_type }}">
+                      {% include "aa_pi_tracker/partials/_planet_type_icon.html" with planet_type=p.planet_type %}
+                      {{ p.planet_name }}
+                    </span>
+                    {% if p.system %}<div class="text-muted pi-text-nav">{{ p.system }}</div>{% endif %}
+                  </div>
+                </div>
+                <span class="badge planet-badge-{{ p.role }} text-uppercase ms-2 pi-text-xs" style="white-space:nowrap">
+                  {% if p.role == "miner" %}Miner
+                  {% elif p.role == "factory_p4" %}P4 Factory
+                  {% else %}Factory{% endif %}
+                </span>
+              </div>
+
+              <hr class="my-2" style="opacity:.15">
+
+              <!-- Role-specific content -->
+              {% if p.role == "miner" %}
+                {% if p.extracts %}
+                <div class="small mb-1">
+                  <span class="text-muted">Extracts:</span>
+                  <strong class="ms-1">{{ p.extracts }}</strong>
+                </div>
+                {% endif %}
+                {% if p.produces %}
+                <div class="small mb-2">
+                  <span class="text-muted">Produces:</span>
+                  <strong class="ms-1 text-info">{{ p.produces }}</strong>
+                  <span class="text-muted">(P1)</span>
+                </div>
+                {% endif %}
+              {% else %}
+                {% if p.p1_inputs %}
+                <div class="small mb-2">
+                  <span class="text-muted d-block mb-1">P1 Inputs:</span>
+                  {% for inp in p.p1_inputs %}
+                  <span class="badge bg-secondary me-1 mb-1 pi-text-sm">{{ inp }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                {% if p.htpp_breakdown %}
+                <div class="small mb-2">
+                  {% for entry in p.htpp_breakdown %}
+                  <div class="aif-row py-1 d-flex justify-content-between">
+                    <span class="text-muted">
+                      <span class="badge bg-danger me-1 pi-text-xxs">P4</span>
+                      {{ entry.schematic }}
+                      <span class="text-muted ms-1 pi-text-sm">High-Tech Plant</span>
+                    </span>
+                    <span class="fw-semibold">{{ entry.count }}×</span>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                {% if p.aif_breakdown %}
+                <div class="small mb-2">
+                  {% for entry in p.aif_breakdown %}
+                  <div class="aif-row py-1 d-flex justify-content-between">
+                    <span class="text-muted">
+                      <span class="badge bg-{% if entry.tier == 3 %}warning text-dark{% else %}primary{% endif %} me-1 pi-text-xxs">P{{ entry.tier }}</span>
+                      {{ entry.schematic }}
+                    </span>
+                    <span class="fw-semibold">{{ entry.count }}×</span>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              {% endif %}
+
+              <hr class="my-2" style="opacity:.15">
+
+              <!-- Layout -->
+              <div class="text-muted pi-text-md text-uppercase mb-1" style="letter-spacing:.04em">Layout</div>
+              <div class="d-flex flex-wrap">
+                <span class="layout-pin"><i class="fas fa-shield-alt text-warning pi-text-xs"></i> CCU {{ p.layout.ccu }}</span>
+                {% if p.layout.extractors %}
+                <span class="layout-pin"><i class="fas fa-circle-notch text-info pi-text-xs"></i> Extractor 1 (8 heads)</span>
+                {% endif %}
+                {% if p.layout.bifs %}
+                <span class="layout-pin"><i class="fas fa-industry text-muted pi-text-xs"></i> {{ p.layout.bifs }}× BIF</span>
+                {% endif %}
+                {% if p.layout.htpps %}
+                <span class="layout-pin"><i class="fas fa-flask text-danger pi-text-xs"></i> {{ p.layout.htpps }}× High-Tech Plant</span>
+                {% endif %}
+                {% if p.layout.aifs %}
+                <span class="layout-pin"><i class="fas fa-cogs text-primary pi-text-xs"></i> {{ p.layout.aifs }}× AIF</span>
+                {% endif %}
+                <span class="layout-pin"><i class="fas fa-box text-success pi-text-xs"></i> Launchpad 1</span>
+              </div>
+
+              {% if not p.is_colonized %}
+              <div class="mt-2">
+                <span class="badge bg-warning text-dark pi-text-xs"><i class="fas fa-plus-circle me-1"></i>To Colonize</span>
+              </div>
+              {% endif %}
+
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}

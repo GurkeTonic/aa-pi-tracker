@@ -1,0 +1,478 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters evelinks %}
+
+{% block page_title %}{% blocktrans with name=char_name %}Maintenance — {{ name }}{% endblocktrans %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block extra_css %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'aa_pi_tracker/css/pi_tracker.css' %}">
+<style>
+.step-header {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-bottom: 1rem;
+  background: rgba(255,255,255,.03);
+}
+.step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.step-bubble {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .9rem;
+  flex-shrink: 0;
+}
+.step-bubble-done    { background: #198754; color: #fff; }
+.step-bubble-active  { background: #0d6efd; color: #fff; box-shadow: 0 0 0 3px rgba(13,110,253,.3); }
+.step-bubble-pending { background: rgba(255,255,255,.1); color: rgba(255,255,255,.4); border: 1px solid rgba(255,255,255,.15); }
+.step-line { flex: 1; height: 2px; background: rgba(255,255,255,.1); margin: 0 4px; }
+.step-line-done { background: #198754; }
+.planet-row {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  user-select: none;
+}
+.planet-row:hover { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.03); }
+.planet-row.row-done { border-color: #198754; background: rgba(25,135,84,.08); }
+.planet-row.row-done .row-check { color: #198754; }
+.row-check { font-size: 1.2rem; color: rgba(255,255,255,.2); transition: color .15s; }
+.urgency-expired  { color: #dc3545; }
+.urgency-critical { color: #fd7e14; }
+.urgency-warning  { color: #ffc107; }
+.urgency-ok       { color: #198754; }
+.progress-thin { height: 4px; border-radius: 2px; }
+.cross-char-badge { background: rgba(255,193,7,.15); color: #ffc107; font-size: .6rem; padding: 2px 6px; border-radius: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Maintenance" %}
+<div class="container-fluid mt-3" style="max-width:860px">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <a href="{% url 'aa_pi_tracker:maintenance_page' project.pk %}"
+       class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>{% trans "Back" %}
+    </a>
+    <div class="d-flex align-items-center gap-2">
+      {% if char_pk %}
+      <img src="{{ char_pk|character_portrait_url:64 }}"
+           class="rounded-circle" width="36" height="36" alt="{{ char_name }}">
+      {% endif %}
+      <div>
+        <h5 class="mb-0 fw-bold">{{ char_name }}</h5>
+        <div class="text-muted small">{{ project.name }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="step-header">
+    <div class="step-indicator" id="step-indicator">
+      <div class="step-bubble step-bubble-active" id="bubble-1">1</div>
+      <div class="text-center ms-2 me-2" style="flex:1">
+        <div class="fw-semibold small" id="label-1">{% trans "Reset Extractors" %}</div>
+        <div class="text-muted pi-text-sm">{% trans "Check & restart extractors" %}</div>
+      </div>
+      <div class="step-line" id="line-12"></div>
+      <div class="step-bubble step-bubble-pending" id="bubble-2">2</div>
+      <div class="text-center ms-2 me-2" style="flex:1">
+        <div class="fw-semibold small" id="label-2">{% trans "Pickup P1" %}</div>
+        <div class="text-muted pi-text-sm">{% trans "Collect from launchpads" %}</div>
+      </div>
+      <div class="step-line" id="line-23"></div>
+      <div class="step-bubble step-bubble-pending" id="bubble-3">3</div>
+      <div class="text-center ms-2 me-2" style="flex:1">
+        <div class="fw-semibold small" id="label-3">{% trans "Load Factories" %}</div>
+        <div class="text-muted pi-text-sm">{% trans "Deliver P1 to factories" %}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 1: Reset Extractors ── -->
+  <div id="step-1">
+    {% if not step1_planets %}
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No miner planets with extractors assigned to this character.</div>
+    {% else %}
+    <h6 class="text-uppercase text-muted small mb-3">
+      <i class="fas fa-bolt me-1 text-warning"></i>Extractor Planets
+      <span class="badge bg-secondary ms-1">{{ step1_planets|length }}</span>
+    </h6>
+    {% for planet in step1_planets %}
+    <div class="planet-row" id="s1-row-{{ planet.pk }}" data-toggle-step="1" data-toggle-pk="{{ planet.pk }}">
+      <div class="d-flex align-items-start gap-3">
+        <div class="mt-1">
+          <i class="fas fa-check-circle row-check" id="s1-check-{{ planet.pk }}"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="fw-semibold type-{{ planet.planet_type }}">
+              {% include "aa_pi_tracker/partials/_planet_type_icon.html" with planet_type=planet.planet_type %}
+              {{ planet.planet_name }}
+            </span>
+            {% if planet.system %}<span class="text-muted small">{{ planet.system }}</span>{% endif %}
+          </div>
+          {% for ext in planet.extractors %}
+          <div class="d-flex align-items-center gap-3 mb-1">
+            <span class="urgency-{{ ext.urgency }} small fw-semibold" style="min-width:80px">
+              {% if ext.urgency == "expired" %}<i class="fas fa-times-circle me-1"></i>
+              {% elif ext.urgency == "critical" %}<i class="fas fa-exclamation-circle me-1"></i>
+              {% elif ext.urgency == "warning" %}<i class="fas fa-clock me-1"></i>
+              {% else %}<i class="fas fa-check-circle me-1"></i>{% endif %}
+              {{ ext.time_remaining }}
+            </span>
+            <span class="text-muted small">{{ ext.resource }}</span>
+            <div class="flex-grow-1" style="max-width:120px">
+              <div class="progress progress-thin">
+                <div class="progress-bar
+                  {% if ext.urgency == 'expired' %}bg-danger
+                  {% elif ext.urgency == 'critical' %}bg-warning
+                  {% elif ext.urgency == 'warning' %}bg-info
+                  {% else %}bg-success{% endif %}"
+                  style="width:{{ ext.progress }}%">
+                </div>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>No extractor data — sync ESI first.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <button class="btn btn-outline-secondary btn-sm" id="btn-skip-1">
+        <i class="fas fa-forward me-1"></i>Skip
+      </button>
+      <button class="btn btn-primary btn-sm" id="btn-next-1">
+        <i class="fas fa-box me-1"></i>Next: Pickup P1
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Step 2: Pickup P1 ── -->
+  <div id="step-2" class="d-none">
+    {% if not step2_planets %}
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No miner planets found for this character.</div>
+    {% else %}
+    <h6 class="text-uppercase text-muted small mb-3">
+      <i class="fas fa-box me-1 text-info"></i>Pickup Locations
+      <span class="badge bg-secondary ms-1">{{ step2_planets|length }}</span>
+    </h6>
+    {% for planet in step2_planets %}
+    <div class="planet-row" id="s2-row-{{ planet.pk }}" data-toggle-step="2" data-toggle-pk="{{ planet.pk }}">
+      <div class="d-flex align-items-start gap-3">
+        <div class="mt-1">
+          <i class="fas fa-check-circle row-check" id="s2-check-{{ planet.pk }}"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="fw-semibold type-{{ planet.planet_type }}">
+              {% include "aa_pi_tracker/partials/_planet_type_icon.html" with planet_type=planet.planet_type %}
+              {{ planet.planet_name }}
+            </span>
+            {% if planet.system %}<span class="text-muted small">{{ planet.system }}</span>{% endif %}
+          </div>
+
+          <!-- Items in storage -->
+          {% for item in planet.items %}
+          <div class="d-flex align-items-center gap-3 mb-1 small">
+            <span class="badge pi-text-xxs
+              {% if item.tier == 1 %}bg-info text-dark
+              {% elif item.tier == 2 %}bg-primary
+              {% elif item.tier == 3 %}bg-warning text-dark
+              {% else %}bg-danger{% endif %}">P{{ item.tier }}</span>
+            <span class="fw-semibold">{{ item.name }}</span>
+            {% if item.qty > 0 %}
+            <span class="text-success">{{ item.qty|floatformat:0 }} in storage</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+            {% if item.weekly_plan %}
+            <span class="text-muted">≈ {{ item.weekly_plan|floatformat:0 }}/wk plan</span>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>No storage data — sync ESI first.</div>
+          {% endfor %}
+
+          <!-- Destinations -->
+          {% if planet.dests %}
+          <div class="mt-2 pt-2 border-top border-secondary">
+            {% for dest in planet.dests %}
+            <div class="small mb-1">
+              <i class="fas fa-arrow-right me-1 text-muted"></i>
+              <span class="text-muted">Deliver to:</span>
+              <strong class="ms-1">{{ dest.char_name }}</strong>
+              <span class="text-muted ms-1">— {{ dest.planet_name }}</span>
+              {% if dest.is_cross_char %}
+              <span class="cross-char-badge ms-1"><i class="fas fa-exchange-alt me-1"></i>cross-char</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="d-flex justify-content-between mt-3">
+      <button class="btn btn-outline-secondary btn-sm" id="btn-prev-2">
+        <i class="fas fa-arrow-left me-1"></i>Back
+      </button>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" id="btn-skip-2">
+          <i class="fas fa-forward me-1"></i>Skip
+        </button>
+        <button class="btn btn-primary btn-sm" id="btn-next-2">
+          <i class="fas fa-truck me-1"></i>Next: Load Factories
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 3: Load Factories ── -->
+  <div id="step-3" class="d-none">
+    {% if not step3_planets %}
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No factory planets assigned to this character.</div>
+    {% else %}
+    <h6 class="text-uppercase text-muted small mb-3">
+      <i class="fas fa-industry me-1 text-primary"></i>Factory Planets
+      <span class="badge bg-secondary ms-1">{{ step3_planets|length }}</span>
+    </h6>
+    {% for planet in step3_planets %}
+    <div class="planet-row" id="s3-row-{{ planet.pk }}" data-toggle-step="3" data-toggle-pk="{{ planet.pk }}">
+      <div class="d-flex align-items-start gap-3">
+        <div class="mt-1">
+          <i class="fas fa-check-circle row-check" id="s3-check-{{ planet.pk }}"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="fw-semibold type-{{ planet.planet_type }}">
+              {% include "aa_pi_tracker/partials/_planet_type_icon.html" with planet_type=planet.planet_type %}
+              {{ planet.planet_name }}
+            </span>
+            {% if planet.system %}<span class="text-muted small">{{ planet.system }}</span>{% endif %}
+            <span class="badge pi-text-xs {% if planet.role == 'factory_p4' %}bg-warning text-dark{% else %}bg-primary{% endif %}">
+              {% if planet.role == "factory_p4" %}P4{% else %}Factory{% endif %}
+            </span>
+          </div>
+
+          <!-- What it receives -->
+          {% for item in planet.receives %}
+          <div class="mb-2">
+            <div class="d-flex align-items-center gap-2 mb-1 small">
+              <span class="badge bg-info text-dark pi-text-xxs">P1</span>
+              <span class="fw-semibold">{{ item.p1 }}</span>
+              <span class="text-muted">≈ {{ item.weekly_qty|floatformat:0 }}/wk total</span>
+            </div>
+            {% for src in item.sources %}
+            <div class="small ms-3 mb-1 text-muted">
+              <i class="fas fa-arrow-right me-1"></i>
+              <span class="text-muted">from:</span>
+              <strong class="ms-1 {% if src.is_cross_char %}text-warning{% else %}text-body{% endif %}">{{ src.char_name }}</strong>
+              <span class="ms-1">— {{ src.planet_name }}</span>
+              <span class="ms-1">({{ src.weekly_qty|floatformat:0 }}/wk)</span>
+              {% if src.is_cross_char %}
+              <span class="cross-char-badge ms-1"><i class="fas fa-exchange-alt me-1"></i>cross-char</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% empty %}
+          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>No routing data — add objectives and miner planets to this project.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="d-flex justify-content-between mt-3">
+      <button class="btn btn-outline-secondary btn-sm" id="btn-prev-3">
+        <i class="fas fa-arrow-left me-1"></i>Back
+      </button>
+      <button class="btn btn-success btn-sm" id="btn-finish">
+        <i class="fas fa-check me-1"></i>Done — All Complete
+      </button>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div id="maint-done" class="d-none text-center py-5">
+    <div class="mb-3" style="font-size:3rem">✅</div>
+    <h5 class="fw-bold mb-1">Maintenance Complete</h5>
+    <div class="text-muted mb-4">Good job, {{ char_name }}. All steps done for today.</div>
+    <a href="{% url 'aa_pi_tracker:maintenance_page' project.pk %}" class="btn btn-outline-primary me-2">
+      <i class="fas fa-arrow-left me-1"></i>Back to Overview
+    </a>
+    <button class="btn btn-outline-secondary btn-sm" id="btn-reset-maint">
+      <i class="fas fa-redo me-1"></i>Reset
+    </button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+  "use strict";
+
+  const PROJECT_PK  = {{ project.pk }};
+  const CHAR_PK     = {{ char_pk }};
+  const TODAY       = new Date().toISOString().slice(0, 10);
+  const LS_KEY      = `pi_maint_${PROJECT_PK}_${CHAR_PK}_${TODAY}`;
+  const SAVE_URL    = "{% url 'aa_pi_tracker:maintenance_save_state' project.pk char_pk %}";
+
+  // Initialise from server state (authoritative), localStorage only as
+  // an immediate visual restore before the server state is available.
+  const serverState = {
+    step:  {{ maint_state.step }},
+    done:  {{ maint_state.done|yesno:"true,false" }},
+    s1:    [{% for pk in maint_state.s1 %}{{ pk }},{% endfor %}],
+    s2:    [{% for pk in maint_state.s2 %}{{ pk }},{% endfor %}],
+    s3:    [{% for pk in maint_state.s3 %}{{ pk }},{% endfor %}],
+  };
+
+  let state = serverState;
+  // Overwrite stale localStorage with current server state on load
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+
+  let _saveTimer = null;
+  function save() {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    // Debounce server saves by 500ms to avoid hammering on rapid toggles
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      fetchPostJson(SAVE_URL, {
+        step:   state.step,
+        done:   state.done,
+        checks: {s1: state.s1, s2: state.s2, s3: state.s3},
+      }).catch(() => {});
+    }, 500);
+  }
+
+  function showStep(n) {
+    [1,2,3].forEach(i => {
+      document.getElementById("step-" + i)?.classList.toggle("d-none", i !== n);
+    });
+    document.getElementById("maint-done")?.classList.add("d-none");
+    updateBubbles(n);
+  }
+
+  function updateBubbles(active) {
+    for (let i = 1; i <= 3; i++) {
+      const b = document.getElementById("bubble-" + i);
+      if (!b) continue;
+      b.className = "step-bubble " + (
+        i < active  ? "step-bubble-done" :
+        i === active ? "step-bubble-active" : "step-bubble-pending"
+      );
+      if (i < active) b.innerHTML = '<i class="fas fa-check"></i>';
+      else b.textContent = i;
+    }
+    ["12","23"].forEach(pair => {
+      const n = parseInt(pair[0]);
+      const l = document.getElementById("line-" + pair);
+      if (l) l.className = "step-line" + (active > n ? " step-line-done" : "");
+    });
+  }
+
+  function applyState() {
+    if (state.done) { showDone(); return; }
+    showStep(state.step);
+    [1, 2, 3].forEach(s => {
+      (state["s" + s] || []).forEach(pk => {
+        const row = document.getElementById("s" + s + "-row-" + pk);
+        if (row) { row.classList.add("row-done"); }
+        const chk = document.getElementById("s" + s + "-check-" + pk);
+        if (chk) { chk.style.color = "#198754"; }
+      });
+    });
+  }
+
+  function toggleRow(step, pk, rowEl) {
+    const key = "s" + step;
+    const idx = state[key].indexOf(pk);
+    const checkEl = document.getElementById("s" + step + "-check-" + pk);
+    if (idx === -1) {
+      state[key].push(pk);
+      rowEl.classList.add("row-done");
+      if (checkEl) checkEl.style.color = "#198754";
+    } else {
+      state[key].splice(idx, 1);
+      rowEl.classList.remove("row-done");
+      if (checkEl) checkEl.style.color = "";
+    }
+    save();
+  }
+
+  function nextStep(from) {
+    state.step = from + 1;
+    save();
+    if (state.step > 3) { finishMaint(); return; }
+    showStep(state.step);
+  }
+
+  function prevStep(from) {
+    state.step = Math.max(1, from - 1);
+    save();
+    showStep(state.step);
+  }
+
+  function showDone() {
+    [1,2,3].forEach(i => document.getElementById("step-" + i)?.classList.add("d-none"));
+    document.getElementById("maint-done")?.classList.remove("d-none");
+    updateBubbles(4);
+  }
+
+  function finishMaint() {
+    state.done = true;
+    save();
+    showDone();
+  }
+
+  function resetMaint() {
+    localStorage.removeItem(LS_KEY);
+    state = {step: 1, s1: [], s2: [], s3: [], done: false};
+    save();
+    location.reload();
+  }
+
+  // Planet row toggle via event delegation
+  document.addEventListener('click', function (e) {
+    const row = e.target.closest('[data-toggle-step]');
+    if (row) toggleRow(parseInt(row.dataset.toggleStep), parseInt(row.dataset.togglePk), row);
+  });
+
+  // Step navigation buttons
+  document.getElementById('btn-skip-1')?.addEventListener('click', () => nextStep(1));
+  document.getElementById('btn-next-1')?.addEventListener('click', () => nextStep(1));
+  document.getElementById('btn-prev-2')?.addEventListener('click', () => prevStep(2));
+  document.getElementById('btn-skip-2')?.addEventListener('click', () => nextStep(2));
+  document.getElementById('btn-next-2')?.addEventListener('click', () => nextStep(2));
+  document.getElementById('btn-prev-3')?.addEventListener('click', () => prevStep(3));
+  document.getElementById('btn-finish')?.addEventListener('click', () => finishMaint());
+  document.getElementById('btn-reset-maint')?.addEventListener('click', () => resetMaint());
+
+  applyState();
+}());
+</script>
+{% endblock %}

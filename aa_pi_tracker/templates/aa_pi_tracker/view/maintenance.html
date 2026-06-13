@@ -1,0 +1,159 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters evelinks %}
+
+{% block page_title %}{% blocktrans with name=project.name %}Maintenance — {{ name }}{% endblocktrans %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .6; }
+}
+.urgency-bar-critical { animation: pulse-red 1.8s ease-in-out infinite; }
+.char-card {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  transition: border-color .15s, box-shadow .15s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.char-card:hover { border-color: var(--bs-primary); box-shadow: 0 0 0 1px var(--bs-primary); color: inherit; }
+.step-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+.step-dot-done     { background:#198754; }
+.step-dot-active   { background:#0dcaf0; }
+.step-dot-inactive { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Maintenance" %}
+<div class="container-fluid mt-3">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <a href="{% url 'aa_pi_tracker:projects' %}?project={{ project.pk }}"
+       class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>{% trans "Back" %}
+    </a>
+    <div>
+      <h5 class="mb-0 fw-bold"><i class="fas fa-tools me-2 text-warning"></i>{% trans "Maintenance Operations" %}</h5>
+      <div class="text-muted small">{{ project.name }}</div>
+    </div>
+  </div>
+
+  <!-- Urgency bar -->
+  {% if total_expired or total_critical %}
+  <div class="alert {% if total_expired %}alert-danger urgency-bar-critical{% else %}alert-warning{% endif %} d-flex align-items-center gap-3 mb-3 py-2">
+    <i class="fas fa-exclamation-triangle fa-lg"></i>
+    <div>
+      {% if total_expired %}
+      <strong>{{ total_expired }} expired extractor{{ total_expired|pluralize }}</strong>
+      {% if total_critical %} · {{ total_critical }} critical{% endif %}
+      — reset now!
+      {% else %}
+      <strong>{{ total_critical }} critical extractor{{ total_critical|pluralize }}</strong> — reset within 4h
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Progress summary -->
+  {% if total_chars %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
+      <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:.04em">Pilots</span>
+      <div class="flex-grow-1" style="max-width:300px">
+        <div class="progress" style="height:6px">
+          {% if total_chars %}
+          <div class="progress-bar bg-success" style="width:{% widthratio done_count total_chars 100 %}%" aria-valuenow="{% widthratio done_count total_chars 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+          {% endif %}
+        </div>
+      </div>
+      <span class="text-muted small">{{ done_count }}/{{ total_chars }} {% trans "done" %}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not chars_data %}
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    No colonized planets found. Sync ESI data first or assign planets to this project.
+  </div>
+  {% else %}
+
+  <!-- Char grid -->
+  <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+    {% for char in chars_data %}
+    <div class="col">
+      <a href="{% url 'aa_pi_tracker:maintenance_char_page' project.pk char.char_id %}"
+         class="char-card p-3">
+        <div class="d-flex align-items-center gap-3">
+          {% if char.char_id %}
+          <img src="{{ char.char_id|character_portrait_url:64 }}"
+               class="rounded-circle flex-shrink-0" width="48" height="48" alt="{{ char.char_name }}">
+          {% else %}
+          <div class="rounded-circle bg-secondary flex-shrink-0 d-flex align-items-center justify-content-center" style="width:48px;height:48px">
+            <i class="fas fa-user-astronaut text-muted"></i>
+          </div>
+          {% endif %}
+
+          <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold text-truncate">{{ char.char_name }}</div>
+
+            <!-- Status row -->
+            <div class="d-flex flex-wrap gap-2 mt-1">
+              {% if char.expired_count %}
+              <span class="badge bg-danger pi-text-sm">
+                <i class="fas fa-times-circle me-1"></i>{{ char.expired_count }} expired
+              </span>
+              {% endif %}
+              {% if char.critical_count %}
+              <span class="badge bg-warning text-dark pi-text-sm">
+                <i class="fas fa-exclamation-circle me-1"></i>{{ char.critical_count }} critical
+              </span>
+              {% endif %}
+              {% if not char.expired_count and not char.critical_count %}
+              <span class="badge bg-success pi-text-sm">
+                <i class="fas fa-check-circle me-1"></i>Extractors OK
+              </span>
+              {% endif %}
+              {% if char.pickup_count %}
+              <span class="badge bg-info text-dark pi-text-sm">
+                <i class="fas fa-box me-1"></i>{{ char.pickup_count }} pickup{{ char.pickup_count|pluralize }}
+              </span>
+              {% endif %}
+              {% if char.delivery_count %}
+              <span class="badge bg-primary pi-text-sm">
+                <i class="fas fa-truck me-1"></i>{{ char.delivery_count }} delivery{{ char.delivery_count|pluralize }}
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- Step dots — server-side state -->
+            <div class="d-flex align-items-center gap-1 mt-2">
+              <span class="text-muted small me-1 pi-text-xs">{% trans "Steps" %}:</span>
+              <span class="step-dot {% if char.maint_done or char.maint_step > 1 %}step-dot-done{% elif char.maint_step == 1 %}step-dot-active{% else %}step-dot-inactive{% endif %}" title="1: {% trans 'Reset Extractors' %}"></span>
+              <span class="step-dot {% if char.maint_done or char.maint_step > 2 %}step-dot-done{% elif char.maint_step == 2 %}step-dot-active{% else %}step-dot-inactive{% endif %}" title="2: {% trans 'Pickup P1' %}"></span>
+              <span class="step-dot {% if char.maint_done %}step-dot-done{% elif char.maint_step == 3 %}step-dot-active{% else %}step-dot-inactive{% endif %}" title="3: {% trans 'Load Factories' %}"></span>
+              <span class="text-muted ms-2 small pi-text-xs">
+                {% if char.maint_done %}{% trans "Done ✓" %}{% else %}{% blocktrans with step=char.maint_step %}Step {{ step }} →{% endblocktrans %}{% endif %}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex-shrink-0 text-muted">
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}

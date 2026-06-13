@@ -1,0 +1,212 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters static %}
+
+{% block page_title %}{% trans "PI Tracker — Planets" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> {% trans "Add Character" %}</a>
+</li>
+<li class="nav-item ms-1">
+  <button class="btn btn-outline-secondary btn-sm" id="btn-sync"><i class="fas fa-sync"></i> {% trans "Sync" %}</button>
+</li>
+{% endblock %}
+
+{% block extra_css %}{% include "bundles/datatables-css-bs5.html" %}{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Planets" %}
+<div class="container-fluid mt-3">
+  <div class="table-responsive">
+    <table id="tbl-planets" class="table table-sm table-hover" style="width:100%">
+      <thead class="table-dark">
+        <tr>
+          <th>{% trans "Character" %}</th><th>{% trans "Region" %}</th><th>{% trans "System" %}</th><th>{% trans "Planet" %}</th><th>{% trans "Type" %}</th>
+          <th class="text-center">{% trans "Lvl" %}</th><th>{% trans "Extractors" %}</th><th>{% trans "Factories" %}</th>
+          <th>{% trans "Storage" %}</th>{% if prices_synced %}<th class="text-end">{% trans "ISK / h" %}</th><th class="text-end">{% trans "Stock ISK" %}</th>{% endif %}<th>{% trans "Projects" %}</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in all_planets %}
+        <tr>
+          <td>{{ row.owner.character.character_name }}</td>
+          <td>{{ row.region }}</td>
+          <td><span class="badge bg-{{ row.sec_class }}">{{ row.sec_display }}</span> {{ row.system }}</td>
+          <td><strong>{{ row.planet.planet_name }}</strong></td>
+          <td><span class="badge bg-secondary">{{ row.planet.get_planet_type_display }}</span></td>
+          <td class="text-center">{{ row.planet.upgrade_level }}</td>
+          <td>
+            {% for name, cnt in row.content_extractors.items %}
+            <span class="badge bg-secondary me-1">{{ name }}</span>
+            {% empty %}<span class="text-muted">—</span>{% endfor %}
+          </td>
+          <td>
+            {% for name, cnt in row.content_factories.items %}
+            <small class="text-info me-1">{{ name }}{% if cnt > 1 %} ×{{ cnt }}{% endif %}</small>
+            {% empty %}<span class="text-muted">—</span>{% endfor %}
+          </td>
+          <td>
+            {% if row.storage %}
+            <button class="btn btn-link btn-sm p-0 text-info" data-bs-toggle="popover" data-bs-html="true"
+                    data-bs-trigger="click" data-bs-placement="left"
+                    data-bs-title="{{ row.planet.planet_name }} Storage"
+                    data-bs-content="{% for s in row.storage %}<div class='d-flex justify-content-between gap-3'><span>{{ s.name }}</span><strong>{{ s.amount|floatformat:0 }}</strong></div>{% endfor %}">
+              {{ row.storage|length }} item{{ row.storage|length|pluralize }}
+            </button>
+            {% else %}<span class="text-muted small">{% trans "empty" %}</span>{% endif %}
+          </td>
+          {% if prices_synced %}
+          <td class="text-end text-success">{% if row.isk_per_hour %}{{ row.isk_per_hour|isk }}{% else %}—{% endif %}</td>
+          <td class="text-end text-info">{% if row.storage_isk_total %}{{ row.storage_isk_total|isk }}{% else %}—{% endif %}</td>
+          {% endif %}
+          <td>
+            {% for proj in row.assigned_projects %}<span class="badge" style="background:#0d6efd">{{ proj }}</span>{% endfor %}
+          </td>
+          <td class="text-end">
+            {% if row.planet.extractors.all %}
+            <button class="btn btn-outline-info btn-sm btn-optimize"
+                    data-planet-pk="{{ row.planet.pk }}"
+                    data-planet-name="{{ row.planet.planet_name }}"
+                    title="Factory Optimizer">
+              <i class="fas fa-calculator"></i>
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="13" class="text-center text-muted py-4">{% trans "No planets found." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Factory Optimizer Modal -->
+<div class="modal fade" id="optimizerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-dark py-2">
+        <h6 class="modal-title"><i class="fas fa-calculator me-2"></i>Factory Optimizer — <span id="opt-planet-name"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3" id="opt-body">
+        <div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+{% include "bundles/datatables-js-bs5.html" %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+  "use strict";
+  document.addEventListener("DOMContentLoaded", () => {
+    $("#tbl-planets").DataTable({pageLength: 50, language: {search: "Filter:"}});
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el =>
+      new bootstrap.Popover(el));
+  });
+  document.getElementById("btn-sync")?.addEventListener("click", function () {
+    this.disabled = true; this.innerHTML = '<i class="fas fa-sync fa-spin"></i> Syncing…';
+    fetchPost("{% url 'aa_pi_tracker:trigger_sync' %}", {}).then(() => {
+      this.innerHTML = '<i class="fas fa-check"></i> Queued';
+      setTimeout(() => {this.disabled = false; this.innerHTML = '<i class="fas fa-sync"></i> Sync'; location.reload();}, 5000);
+    });
+  });
+
+  // Factory Optimizer
+  const optModal = new bootstrap.Modal(document.getElementById("optimizerModal"));
+  function fmtNum(n) { return n == null ? "—" : Number(n).toLocaleString(); }
+  function gapBadge(gap) {
+    if (gap === 0) return '<span class="badge bg-success">✓ Optimal</span>';
+    if (gap > 0) return `<span class="badge bg-warning text-dark">+${gap} surplus</span>`;
+    return `<span class="badge bg-danger">${gap} short</span>`;
+  }
+
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".btn-optimize");
+    if (!btn) return;
+    const pk = btn.dataset.planetPk;
+    const name = btn.dataset.planetName;
+    document.getElementById("opt-planet-name").textContent = name;
+    document.getElementById("opt-body").innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+    optModal.show();
+
+    const optimizerBase = "{% url 'aa_pi_tracker:planet_optimizer_json' planet_pk=0 %}".replace("/0/", `/${pk}/`);
+    fetch(optimizerBase)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.ok) { document.getElementById("opt-body").innerHTML = `<div class="alert alert-danger">${d.error}</div>`; return; }
+        let html = "";
+
+        // Extraction rates summary
+        const rates = Object.entries(d.extraction_rates || {});
+        if (rates.length) {
+          html += `<div class="mb-3"><strong class="small text-uppercase text-muted">Current Extraction</strong>
+            <div class="d-flex flex-wrap gap-2 mt-1">`;
+          for (const [res, rate] of rates)
+            html += `<span class="badge bg-secondary">${res}: ${fmtNum(rate)}/h</span>`;
+          html += `</div></div>`;
+        }
+
+        // P1 chains
+        if (d.p1_chains && d.p1_chains.length) {
+          html += `<div class="mb-3"><strong class="small text-uppercase text-muted">P1 Factories</strong>
+            <table class="table table-sm table-hover mt-1 mb-0">
+            <thead class="table-dark"><tr>
+              <th>Product</th><th>P0 Source</th>
+              <th class="text-center">Optimal</th><th class="text-center">Actual</th>
+              <th class="text-center">Gap</th><th class="text-end">Util %</th>
+              <th class="text-end">ISK / h</th>
+            </tr></thead><tbody>`;
+          for (const c of d.p1_chains) {
+            html += `<tr>
+              <td><strong>${c.product}</strong></td>
+              <td class="text-muted small">${c.p0_source}</td>
+              <td class="text-center">${c.optimal_factories} <small class="text-muted">(${c.optimal_factories_float})</small></td>
+              <td class="text-center">${c.actual_factories}</td>
+              <td class="text-center">${gapBadge(c.factory_gap)}</td>
+              <td class="text-end">${c.utilization_pct}%</td>
+              <td class="text-end text-success">${c.isk_per_hour_optimal ? fmtNum(c.isk_per_hour_optimal) + " ISK" : "—"}</td>
+            </tr>`;
+          }
+          html += `</tbody></table></div>`;
+        }
+
+        // P2 chains (only if planet can self-sustain both P1 inputs)
+        if (d.p2_chains && d.p2_chains.length) {
+          html += `<div class="mb-1"><strong class="small text-uppercase text-muted">P2 Chains (single-planet)</strong>
+            <table class="table table-sm table-hover mt-1 mb-0">
+            <thead class="table-dark"><tr>
+              <th>Product</th><th>Bottleneck</th>
+              <th class="text-center">Optimal</th><th class="text-center">Actual</th>
+              <th class="text-center">Gap</th><th class="text-end">ISK / h</th>
+            </tr></thead><tbody>`;
+          for (const c of d.p2_chains) {
+            html += `<tr>
+              <td><strong>${c.product}</strong></td>
+              <td class="text-muted small">${c.bottleneck_input}</td>
+              <td class="text-center">${c.optimal_factories} <small class="text-muted">(${c.optimal_factories_float})</small></td>
+              <td class="text-center">${c.actual_factories}</td>
+              <td class="text-center">${gapBadge(c.factory_gap)}</td>
+              <td class="text-end text-success">${c.isk_per_hour_optimal ? fmtNum(c.isk_per_hour_optimal) + " ISK" : "—"}</td>
+            </tr>`;
+          }
+          html += `</tbody></table></div>`;
+        }
+
+        if (!rates.length) html = '<div class="text-muted text-center py-3">No active extractors on this planet.</div>';
+        document.getElementById("opt-body").innerHTML = html;
+      })
+      .catch(() => {
+        document.getElementById("opt-body").innerHTML = '<div class="alert alert-danger">Request failed.</div>';
+      });
+  });
+}());
+</script>
+{% endblock %}

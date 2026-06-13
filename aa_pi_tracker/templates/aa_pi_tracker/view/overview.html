@@ -1,0 +1,235 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters static %}
+
+{% block page_title %}{% trans "PI Tracker — Overview" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> {% trans "Add Character" %}</a>
+</li>
+<li class="nav-item ms-1">
+  <button class="btn btn-outline-secondary btn-sm" id="btn-sync"><i class="fas fa-sync"></i> {% trans "Sync" %}</button>
+</li>
+{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="PI Tracker" %}
+<div class="container-fluid mt-3">
+
+{% if not owners_info %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>{% trans "No characters registered." %}
+  {% blocktrans %}Click <strong>Add Character</strong> and authorise <code>esi-planets.manage_planets.v1</code>.{% endblocktrans %}
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small text-uppercase mb-1">{% trans "Factory ISK / h" %}</div>
+        <div class="fs-4 fw-bold text-success">
+          {% if prices_synced %}{{ summary.factory_isk_h|isk }}{% else %}<span class="text-muted small">{% trans "sync prices" %}</span>{% endif %}
+        </div>
+        <div class="text-muted small">
+          {% if prices_synced %}{% blocktrans with val=summary.total_isk_h|isk %}P0 raw: {{ val }}{% endblocktrans %}{% else %}{% trans "factory output" %}{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small text-uppercase mb-1">{% trans "Extractors" %}</div>
+        <div class="fs-4 fw-bold">
+          {% if summary.expired %}<span class="text-danger">{{ summary.expired }} exp</span>
+          {% elif summary.critical %}<span class="text-warning">{{ summary.critical }} crit</span>
+          {% else %}<span class="text-success">{{ summary.active }} ok</span>{% endif %}
+        </div>
+        <div class="text-muted small">{{ summary.active }} ok · {{ summary.warning }} warn · {{ summary.critical }} crit · {{ summary.expired }} exp</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small text-uppercase mb-1">{% trans "Planets" %}</div>
+        <div class="fs-4 fw-bold">{{ summary.total_planets }}</div>
+        <div class="text-muted small">{{ summary.total_characters }} character{{ summary.total_characters|pluralize }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small text-uppercase mb-1">{% trans "Storage Value" %}</div>
+        <div class="fs-4 fw-bold text-info">
+          {% if prices_synced %}{{ summary.total_storage_isk|isk }}{% else %}—{% endif %}
+        </div>
+        <div class="text-muted small">
+          {% if last_synced %}{% blocktrans with dt=last_synced|date:"d M H:i" %}Synced {{ dt }}{% endblocktrans %}{% else %}{% trans "never synced" %}{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if extraction_snapshot %}
+<h6 class="text-uppercase text-muted small mb-2"><i class="fas fa-cube me-1"></i>{% trans "Current Extraction" %}</h6>
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr><th>{% trans "P0 Resource" %}</th><th class="text-end">{% trans "Qty / h" %}</th>{% if prices_synced %}<th class="text-end">{% trans "ISK / h" %}</th>{% endif %}<th class="text-center">{% trans "Chars" %}</th></tr>
+      </thead>
+      <tbody>
+        {% for row in extraction_snapshot %}
+        <tr>
+          <td><strong>{{ row.product }}</strong></td>
+          <td class="text-end">{{ row.qty_h|floatformat:0 }}</td>
+          {% if prices_synced %}<td class="text-end text-success">{{ row.isk_h|isk }}</td>{% endif %}
+          <td class="text-center text-muted">{{ row.char_count }}</td>
+        </tr>
+        {% endfor %}
+        {% if prices_synced %}
+        <tr class="table-secondary fw-bold">
+          <td>{% trans "Total" %}</td><td class="text-end">—</td><td class="text-end text-success">{{ summary.total_isk_h|isk }}</td><td></td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% elif owners_info %}
+<div class="text-muted"><i class="fas fa-info-circle me-1"></i>{% trans "No active extractors. Click Sync to refresh." %}</div>
+{% endif %}
+
+{% if project_summaries %}
+<h6 class="text-uppercase text-muted small mt-4 mb-2">
+  <i class="fas fa-folder me-1 text-warning"></i>{% trans "Active Projects" %}
+</h6>
+<div class="row g-2 mb-4">
+  {% for proj in project_summaries %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{% if proj.is_corp %}{% url 'aa_pi_tracker:corp_projects' %}?project={{ proj.pk }}{% else %}{% url 'aa_pi_tracker:projects' %}?project={{ proj.pk }}{% endif %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="fw-semibold small text-truncate">{{ proj.name }}</span>
+            <div class="d-flex align-items-center gap-1 ms-2 flex-shrink-0">
+              {% if proj.is_corp %}<span class="badge bg-warning text-dark pi-text-xxs"><i class="fas fa-users"></i></span>{% endif %}
+              <span class="badge bg-secondary pi-text-xs">{{ proj.planet_count }}P</span>
+            </div>
+          </div>
+          <div class="text-muted small mt-1">
+            {% if prices_synced and proj.target_isk_h %}
+            <span class="text-success"><i class="fas fa-bullseye me-1"></i>{{ proj.target_isk_h|isk }}/h {% trans "target" %}</span>
+            {% else %}
+            <span><i class="fas fa-globe me-1"></i>{{ proj.planet_count }} {% blocktrans count n=proj.planet_count %}planet{% plural %}planets{% endblocktrans %}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{% url 'aa_pi_tracker:projects' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100" style="border:1px dashed var(--bs-border-color) !important">
+        <div class="card-body py-2 px-3 d-flex align-items-center text-muted small">
+          <i class="fas fa-plus me-2"></i>{% trans "New project" %}
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% if timeline_expired or timeline_critical or timeline_today or timeline_soon %}
+<h6 class="text-uppercase text-muted small mt-4 mb-2">
+  <i class="fas fa-clock me-1 text-info"></i>{% trans "Extractor Schedule — Next 72h" %}
+</h6>
+<div class="row g-2 mb-4">
+  {% if timeline_expired %}
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="card border-0 shadow-sm h-100 border-danger" style="border-left:3px solid var(--bs-danger) !important">
+      <div class="card-header py-1 px-3 bg-danger bg-opacity-10">
+        <span class="small fw-semibold text-danger"><i class="fas fa-times-circle me-1"></i>{% trans "Expired" %} <span class="badge bg-danger">{{ timeline_expired|length }}</span></span>
+      </div>
+      <div class="card-body py-2 px-3">
+        {% for e in timeline_expired %}
+        <div class="small text-danger mb-1">{{ e.character }} · {{ e.product }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if timeline_critical %}
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:3px solid var(--bs-warning) !important">
+      <div class="card-header py-1 px-3 bg-warning bg-opacity-10">
+        <span class="small fw-semibold text-warning"><i class="fas fa-exclamation-circle me-1"></i>{% trans "Critical — &lt;4h" %} <span class="badge bg-warning text-dark">{{ timeline_critical|length }}</span></span>
+      </div>
+      <div class="card-body py-2 px-3">
+        {% for e in timeline_critical %}
+        <div class="small text-warning mb-1">{{ e.character }} · {{ e.product }} <span class="text-muted">({{ e.time_remaining }})</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if timeline_today %}
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:3px solid var(--bs-info) !important">
+      <div class="card-header py-1 px-3 bg-info bg-opacity-10">
+        <span class="small fw-semibold text-info"><i class="fas fa-clock me-1"></i>{% trans "Today — 4–24h" %} <span class="badge bg-info text-dark">{{ timeline_today|length }}</span></span>
+      </div>
+      <div class="card-body py-2 px-3">
+        {% for e in timeline_today %}
+        <div class="small text-info mb-1">{{ e.character }} · {{ e.product }} <span class="text-muted">({{ e.time_remaining }})</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if timeline_soon %}
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:3px solid var(--bs-success) !important">
+      <div class="card-header py-1 px-3 bg-success bg-opacity-10">
+        <span class="small fw-semibold text-success"><i class="fas fa-check-circle me-1"></i>{% trans "Soon — 24–72h" %} <span class="badge bg-success">{{ timeline_soon|length }}</span></span>
+      </div>
+      <div class="card-body py-2 px-3">
+        {% for e in timeline_soon %}
+        <div class="small text-muted mb-1">{{ e.character }} · {{ e.product }} <span class="text-muted">({{ e.time_remaining }})</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+  "use strict";
+  document.getElementById("btn-sync")?.addEventListener("click", function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> {% trans "Queuing…" %}';
+    fetchPost("{% url 'aa_pi_tracker:trigger_sync' %}", {}).then(() => {
+      btn.innerHTML = '<i class="fas fa-check"></i> {% trans "Queued" %}';
+      btn.title = "{% trans 'ESI sync queued — data updates within ~10 minutes' %}";
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync" %}'; btn.title = ""; }, 15000);
+    }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync" %}'; });
+  });
+}());
+</script>
+{% endblock %}

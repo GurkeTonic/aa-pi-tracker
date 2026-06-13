@@ -10,8 +10,9 @@ class PiTrackerMenuItem(MenuItemHook):
     def __init__(self):
         super().__init__(
             _("PI Tracker"),
-            "fas fa-globe",
+            "fas fa-globe fa-fw",
             "aa_pi_tracker:index",
+            order=1100,
             navactive=["aa_pi_tracker:"],
         )
 

@@ -1,0 +1,929 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters evelinks static %}
+
+{% block page_title %}{% trans "PI Tracker — Projects" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-plus"></i> {% trans "Add Character" %}
+  </a>
+</li>
+{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Projects" %}
+<div class="container-fluid mt-3">
+<div class="row g-0">
+
+  <!-- ── Left sidebar ──────────────────────────────────────────────────────── -->
+  <div class="col-auto" style="width:230px;min-width:230px;border-right:1px solid var(--bs-border-color)">
+    <div class="pe-3">
+
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="text-uppercase text-muted fw-bold pi-text-nav" style="letter-spacing:.05em">{% trans "Projects" %}</span>
+        <button class="btn btn-sm btn-outline-primary py-0 px-2" id="btn-new-project" title="{% trans 'New project' %}">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+
+      {% if projects %}
+      <ul class="list-unstyled mb-0">
+        {% for proj in projects %}
+        <li class="mb-1">
+          <a href="?project={{ proj.pk }}"
+             class="d-flex align-items-center px-2 py-2 rounded text-decoration-none gap-2 {% if selected_project.pk == proj.pk %}bg-primary text-white{% else %}text-body{% endif %}"
+             style="transition:background .15s">
+            <i class="fas fa-{% if selected_project.pk == proj.pk %}folder-open{% else %}folder{% endif %} small" style="width:14px"></i>
+            <span class="flex-grow-1 text-truncate small">{{ proj.name }}</span>
+            <span class="badge pi-text-xs {% if selected_project.pk == proj.pk %}bg-white text-primary{% else %}bg-secondary{% endif %}">
+              {{ proj.assigned_planets.all|length }}P
+            </span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted small px-1">{% trans "No projects yet." %}</p>
+      {% endif %}
+
+    </div>
+  </div><!-- /sidebar -->
+
+  <!-- ── Main content ──────────────────────────────────────────────────────── -->
+  <div class="col ps-4">
+
+    {% if not selected_project %}
+    <!-- Empty state -->
+    <div class="d-flex flex-column align-items-center justify-content-center text-center py-5 text-muted">
+      <i class="fas fa-folder-open fa-3x mb-3 opacity-25"></i>
+      <h5>{% trans "No project selected" %}</h5>
+      <p class="small mb-3">{% trans "Select a project from the sidebar, or create a new one." %}<br>
+        {% trans "You can also create projects directly from the" %}
+        <a href="{% url 'aa_pi_tracker:optimizer' %}">{% trans "Optimizer" %}</a>.</p>
+      <button class="btn btn-primary" id="btn-new-project-empty">
+        <i class="fas fa-plus me-1"></i>{% trans "New Project" %}
+      </button>
+    </div>
+
+    {% else %}
+    <!-- Project header -->
+    <div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+      <div>
+        <h5 class="mb-0 fw-bold">{{ selected_project.name }}</h5>
+        {% if selected_project.description %}
+        <div class="text-muted small mt-1">{{ selected_project.description }}</div>
+        {% endif %}
+        {% if project_data %}
+        <div class="mt-2 d-flex flex-wrap gap-2">
+          {% with p=project_data %}
+          {% if p.planet_assignments %}
+          <span class="badge bg-light text-dark border">
+            <i class="fas fa-globe me-1"></i>{{ p.planet_assignments|length }} planet{{ p.planet_assignments|length|pluralize }}
+          </span>
+          {% endif %}
+          {% if prices_synced and p.total_isk_h_target %}
+          <span class="badge bg-success">Target {{ p.total_isk_h_target|isk }}/h</span>
+          {% if p.total_isk_h_actual %}
+          <span class="badge {% if p.total_isk_h_actual >= p.total_isk_h_target %}bg-success{% else %}bg-warning text-dark{% endif %}">
+            Current {{ p.total_isk_h_actual|isk }}/h
+          </span>
+          {% endif %}
+          {% endif %}
+          {% endwith %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <a href="{% url 'aa_pi_tracker:buildout_page' selected_project.pk %}"
+           class="btn btn-sm btn-outline-info">
+          <i class="fas fa-drafting-compass me-1"></i>Build-Out
+        </a>
+        <a href="{% url 'aa_pi_tracker:maintenance_page' selected_project.pk %}"
+           class="btn btn-sm btn-outline-warning">
+          <i class="fas fa-tools me-1"></i>Maintenance
+        </a>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="project-tabs">
+      <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#tab-plan">
+          <i class="fas fa-sitemap me-1"></i>Plan
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tab-analysis">
+          <i class="fas fa-chart-bar me-1"></i>Analysis
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tab-manage">
+          <i class="fas fa-cog me-1"></i>Manage
+        </a>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+
+      <!-- ── Tab: Plan ──────────────────────────────────────────────────────── -->
+      <div class="tab-pane fade show active" id="tab-plan">
+        {% if project_data and project_data.plan_summary %}
+        {% with ps=project_data.plan_summary %}
+        <div class="d-flex flex-wrap gap-3 mb-3 small">
+          {% if ps.miners_total %}
+          <span class="{% if ps.miners_active == ps.miners_total %}text-success{% elif ps.miners_active > 0 %}text-warning{% else %}text-danger{% endif %}">
+            <i class="fas fa-hammer me-1"></i>Miners: {{ ps.miners_active }}/{{ ps.miners_total }} active
+          </span>
+          {% endif %}
+          {% if ps.factories_total %}
+          <span class="{% if ps.factories_configured == ps.factories_total %}text-success{% elif ps.factories_configured > 0 %}text-warning{% else %}text-danger{% endif %}">
+            <i class="fas fa-industry me-1"></i>Factories: {{ ps.factories_configured }}/{{ ps.factories_total }} configured
+          </span>
+          {% endif %}
+          {% if ps.to_colonize %}
+          <span class="text-warning">
+            <i class="fas fa-plus-circle me-1"></i>{{ ps.to_colonize }} to colonize
+          </span>
+          {% endif %}
+        </div>
+        {% endwith %}
+        {% endif %}
+        {% if project_data and project_data.planet_assignments %}
+        {% with assignments=project_data.planet_assignments %}
+
+        <!-- Miner planets -->
+        {% with miners=assignments|filter_role:"miner" %}
+        {% if miners %}
+        <h6 class="text-uppercase text-muted small mb-2">
+          <i class="fas fa-hammer me-1 text-primary"></i>Miner Planets
+          <span class="badge bg-primary ms-1">{{ miners|length }}</span>
+        </h6>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2 mb-4">
+          {% for a in miners %}
+          <div class="col">
+            <div class="card h-100 border-0 shadow-sm" style="border-left:3px solid var(--bs-primary) !important{% if a.is_planned %};opacity:.8{% endif %}">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center mb-2">
+                  {% if a.is_planned %}
+                  <div class="rounded-circle me-2 flex-shrink-0 bg-secondary d-flex align-items-center justify-content-center" style="width:28px;height:28px">
+                    <i class="fas fa-satellite text-white pi-text-xs"></i>
+                  </div>
+                  {% else %}
+                  <img src="{{ a.char_id|character_portrait_url:32 }}"
+                       class="rounded-circle me-2 flex-shrink-0" width="28" height="28" alt="">
+                  {% endif %}
+                  <span class="fw-semibold small text-truncate flex-grow-1">{{ a.char_name }}</span>
+                  {% if a.is_planned %}
+                  <span class="badge bg-warning text-dark ms-1 pi-text-xs">To Colonize</span>
+                  {% else %}
+                  <span class="badge bg-primary ms-1 pi-text-xs">Miner</span>
+                  {% endif %}
+                </div>
+                <div class="small text-muted mb-1">
+                  <i class="fas fa-globe me-1 pi-text-sm"></i>
+                  {% if a.is_planned %}<em>New planet</em>{% else %}{{ a.planet_name }}{% endif %}
+                  {% if a.planet_type_display %}<span class="badge bg-light text-dark border ms-1 pi-text-tiny">{{ a.planet_type_display }}</span>{% endif %}
+                </div>
+                <div class="small text-muted mb-1">
+                  <i class="fas fa-map-marker-alt me-1 pi-text-sm"></i>{{ a.system }}
+                  {% if a.is_planned %}<span class="badge bg-light text-muted border ms-1 pi-text-tiny">near</span>
+                  {% elif a.sec %}<span class="badge {{ a.sec_class }} ms-1 pi-text-tiny">{{ a.sec }}</span>{% endif %}
+                </div>
+                {% if a.display_p0 %}
+                <div class="mt-1 d-flex align-items-center gap-1 small">
+                  <span class="badge bg-light text-dark border pi-text-xs">{{ a.display_p0 }}</span>
+                  <i class="fas fa-arrow-right text-muted pi-text-xxs"></i>
+                  <span class="badge bg-secondary pi-text-xs">P1</span>
+                </div>
+                {% if not a.is_planned %}
+                  {% if a.actual_p0 and a.planned_p0 and a.actual_p0 != a.planned_p0 %}
+                  <div class="mt-1 small text-warning pi-text-sm">
+                    <i class="fas fa-exclamation-triangle me-1"></i>Mining {{ a.actual_p0 }} — expected {{ a.planned_p0 }}
+                  </div>
+                  {% elif a.actual_p0 %}
+                  <div class="mt-1 small text-success pi-text-sm">
+                    <i class="fas fa-check-circle me-1"></i>Extractor active
+                  </div>
+                  {% elif a.planned_p0 %}
+                  <div class="mt-1 small text-danger pi-text-sm">
+                    <i class="fas fa-times-circle me-1"></i>No active extractor
+                  </div>
+                  {% endif %}
+                {% endif %}
+                {% else %}
+                <div class="small text-warning mt-1 pi-text-nav">
+                  <i class="fas fa-question-circle me-1"></i>P0 resource not set
+                </div>
+                {% endif %}
+                {% if a.is_planned %}
+                <div class="mt-1 small text-warning pi-text-sm">
+                  <i class="fas fa-tools me-1"></i>Needs Command Center
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- P4 Factory planets -->
+        {% with fac_p4=assignments|filter_role:"factory_p4" %}
+        {% if fac_p4 %}
+        <h6 class="text-uppercase text-muted small mb-2">
+          <i class="fas fa-industry me-1 text-danger"></i>P4 Factory Planets
+          <span class="badge bg-danger ms-1">{{ fac_p4|length }}</span>
+        </h6>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2 mb-4">
+          {% for a in fac_p4 %}
+          <div class="col">
+            <div class="card h-100 border-0 shadow-sm" style="border-left:3px solid var(--bs-danger) !important{% if a.is_planned %};opacity:.8{% endif %}">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center mb-2">
+                  {% if a.is_planned %}
+                  <div class="rounded-circle me-2 flex-shrink-0 bg-secondary d-flex align-items-center justify-content-center" style="width:28px;height:28px">
+                    <i class="fas fa-satellite text-white pi-text-xs"></i>
+                  </div>
+                  {% else %}
+                  <img src="{{ a.char_id|character_portrait_url:32 }}"
+                       class="rounded-circle me-2 flex-shrink-0" width="28" height="28" alt="">
+                  {% endif %}
+                  <span class="fw-semibold small text-truncate flex-grow-1">{{ a.char_name }}</span>
+                  {% if a.is_planned %}
+                  <span class="badge bg-warning text-dark ms-1 pi-text-xs">To Colonize</span>
+                  {% else %}
+                  <span class="badge bg-danger ms-1 pi-text-xs">P4 Factory</span>
+                  {% endif %}
+                </div>
+                <div class="small text-muted mb-1">
+                  <i class="fas fa-globe me-1 pi-text-sm"></i>
+                  {% if a.is_planned %}<em>New planet</em>{% else %}{{ a.planet_name }}{% endif %}
+                  {% if a.planet_type_display %}<span class="badge bg-light text-dark border ms-1 pi-text-tiny">{{ a.planet_type_display }}</span>{% endif %}
+                </div>
+                <div class="small text-muted mb-1">
+                  <i class="fas fa-map-marker-alt me-1 pi-text-sm"></i>{{ a.system }}
+                  {% if a.is_planned %}<span class="badge bg-light text-muted border ms-1 pi-text-tiny">near</span>
+                  {% elif a.sec %}<span class="badge {{ a.sec_class }} ms-1 pi-text-tiny">{{ a.sec }}</span>{% endif %}
+                </div>
+                {% if a.factory_schematics %}
+                <div class="mt-1 small">
+                  {% for sch in a.factory_schematics %}<span class="badge bg-light text-dark border me-1 mb-1 pi-text-tiny">{{ sch }}</span>{% endfor %}
+                </div>
+                {% if not a.is_planned %}
+                <div class="mt-1 small text-success pi-text-sm">
+                  <i class="fas fa-check-circle me-1"></i>Schematics loaded
+                </div>
+                {% endif %}
+                {% else %}
+                {% if not a.is_planned %}
+                <div class="small text-danger mt-1 pi-text-md">
+                  <i class="fas fa-times-circle me-1"></i>No schematics configured
+                </div>
+                {% else %}
+                <div class="small text-muted mt-1 pi-text-md">
+                  <i class="fas fa-cogs me-1"></i>P2 → P3 → P4 assembly
+                </div>
+                {% endif %}
+                {% endif %}
+                {% if a.is_planned %}
+                <div class="mt-1 small text-warning pi-text-sm">
+                  <i class="fas fa-tools me-1"></i>Needs Command Center
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Factory planets (P2/P3) -->
+        {% with fac=assignments|filter_role:"factory" %}
+        {% if fac %}
+        <h6 class="text-uppercase text-muted small mb-2">
+          <i class="fas fa-cogs me-1 text-warning"></i>Factory Planets
+          <span class="badge bg-warning text-dark ms-1">{{ fac|length }}</span>
+        </h6>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2 mb-4">
+          {% for a in fac %}
+          <div class="col">
+            <div class="card h-100 border-0 shadow-sm" style="border-left:3px solid var(--bs-warning) !important{% if a.is_planned %};opacity:.8{% endif %}">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center mb-2">
+                  {% if a.is_planned %}
+                  <div class="rounded-circle me-2 flex-shrink-0 bg-secondary d-flex align-items-center justify-content-center" style="width:28px;height:28px">
+                    <i class="fas fa-satellite text-white pi-text-xs"></i>
+                  </div>
+                  {% else %}
+                  <img src="{{ a.char_id|character_portrait_url:32 }}"
+                       class="rounded-circle me-2 flex-shrink-0" width="28" height="28" alt="">
+                  {% endif %}
+                  <span class="fw-semibold small text-truncate flex-grow-1">{{ a.char_name }}</span>
+                  {% if a.is_planned %}
+                  <span class="badge bg-warning text-dark ms-1 pi-text-xs">To Colonize</span>
+                  {% else %}
+                  <span class="badge bg-warning text-dark ms-1 pi-text-xs">Factory</span>
+                  {% endif %}
+                </div>
+                <div class="small text-muted mb-1">
+                  <i class="fas fa-globe me-1 pi-text-sm"></i>
+                  {% if a.is_planned %}<em>New planet</em>{% else %}{{ a.planet_name }}{% endif %}
+                  {% if a.planet_type_display %}<span class="badge bg-light text-dark border ms-1 pi-text-tiny">{{ a.planet_type_display }}</span>{% endif %}
+                </div>
+                <div class="small text-muted mb-1">
+                  <i class="fas fa-map-marker-alt me-1 pi-text-sm"></i>{{ a.system }}
+                  {% if a.is_planned %}<span class="badge bg-light text-muted border ms-1 pi-text-tiny">near</span>
+                  {% elif a.sec %}<span class="badge {{ a.sec_class }} ms-1 pi-text-tiny">{{ a.sec }}</span>{% endif %}
+                </div>
+                {% if a.factory_schematics %}
+                <div class="mt-1 small">
+                  {% for sch in a.factory_schematics %}<span class="badge bg-light text-dark border me-1 mb-1 pi-text-tiny">{{ sch }}</span>{% endfor %}
+                </div>
+                {% if not a.is_planned %}
+                <div class="mt-1 small text-success pi-text-sm">
+                  <i class="fas fa-check-circle me-1"></i>Schematics loaded
+                </div>
+                {% endif %}
+                {% else %}
+                {% if not a.is_planned %}
+                <div class="small text-danger mt-1 pi-text-md">
+                  <i class="fas fa-times-circle me-1"></i>No schematics configured
+                </div>
+                {% else %}
+                <div class="small text-muted mt-1 pi-text-md">
+                  <i class="fas fa-cogs me-1"></i>P1 → P2 → P3 processing
+                </div>
+                {% endif %}
+                {% endif %}
+                {% if a.is_planned %}
+                <div class="mt-1 small text-warning pi-text-sm">
+                  <i class="fas fa-tools me-1"></i>Needs Command Center
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Planets without role -->
+        {% with norole=assignments|filter_role:"" %}
+        {% if norole %}
+        <h6 class="text-uppercase text-muted small mb-2">
+          <i class="fas fa-globe me-1"></i>Assigned (no role set)
+          <span class="badge bg-secondary ms-1">{{ norole|length }}</span>
+        </h6>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2 mb-4">
+          {% for a in norole %}
+          <div class="col">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center mb-2">
+                  <img src="{{ a.char_id|character_portrait_url:32 }}"
+                       class="rounded-circle me-2 flex-shrink-0" width="28" height="28" alt="">
+                  <span class="fw-semibold small text-truncate">{{ a.char_name }}</span>
+                </div>
+                <div class="small text-muted mb-1">
+                  <i class="fas fa-globe me-1 pi-text-sm"></i>{{ a.planet_name }}
+                  <span class="badge bg-light text-dark border ms-1 pi-text-tiny">{{ a.planet_type_display }}</span>
+                </div>
+                <div class="small text-muted">
+                  <i class="fas fa-map-marker-alt me-1 pi-text-sm"></i>{{ a.system }}
+                </div>
+                {% if a.factory_schematics %}
+                <div class="mt-1 small">
+                  {% for sch in a.factory_schematics %}
+                  <span class="badge bg-light text-dark border me-1 mb-1 pi-text-tiny">{{ sch }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% endwith %}
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-globe fa-2x mb-3 opacity-25"></i>
+          <p class="mb-1">No planets assigned yet.</p>
+          <p class="small">
+            Assign planets in the <strong>Manage</strong> tab, or generate a plan in the
+            <a href="{% url 'aa_pi_tracker:optimizer' %}">Optimizer</a> and click "Create Project".
+          </p>
+        </div>
+        {% endif %}
+      </div><!-- /tab-plan -->
+
+      <!-- ── Tab: Analysis ──────────────────────────────────────────────────── -->
+      <div class="tab-pane fade" id="tab-analysis">
+        {% if project_data %}
+        {% if not selected_project.objectives.exists %}
+        <div class="alert alert-info py-2 small">
+          <i class="fas fa-info-circle me-1"></i>
+          Add production targets in the <strong>Manage</strong> tab to see factory requirements.
+        </div>
+        {% else %}
+
+        <h6 class="text-uppercase text-muted small mb-2">
+          <i class="fas fa-industry me-1"></i>Factory Requirements
+          <span class="text-muted fw-normal ms-1" style="text-transform:none;font-size:.8em">
+            · <span class="text-success">green</span> = surplus · <span class="text-danger">red</span> = deficit
+          </span>
+        </h6>
+        <div class="table-responsive mb-4">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th style="min-width:160px">Schematic</th>
+                <th class="text-end" style="width:60px">Need</th>
+                <th class="text-end" style="width:60px">Have</th>
+                <th class="text-end" style="width:60px">Gap</th>
+                <th class="text-end" style="width:80px">Need/h</th>
+                <th class="text-end" style="width:80px">Have/h</th>
+                {% if prices_synced %}
+                <th class="text-end" style="width:100px">ISK target</th>
+                <th class="text-end" style="width:100px">ISK current</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for tier_num, tier_label, tier_list in project_data.fabrication_tiers %}
+              {% if tier_list %}
+              <tr class="table-secondary">
+                <td colspan="{% if prices_synced %}8{% else %}6{% endif %}" class="py-1 ps-2">
+                  <span class="badge pi-text-sm {% if tier_num == 4 %}bg-danger{% elif tier_num == 3 %}bg-primary{% elif tier_num == 2 %}bg-info text-dark{% else %}bg-secondary{% endif %} me-1">P{{ tier_num }}</span>
+                  <span class="text-muted small">{{ tier_label }}</span>
+                </td>
+              </tr>
+              {% for row in tier_list %}
+              <tr>
+                <td class="small ps-3">{{ row.schematic }}</td>
+                <td class="text-end small">{{ row.factories_needed }}</td>
+                <td class="text-end small">{{ row.actual_factories }}</td>
+                <td class="text-end fw-bold small {% if row.gap >= 0 %}text-success{% else %}text-danger{% endif %}">
+                  {% if row.gap >= 0 %}+{% endif %}{{ row.gap }}
+                </td>
+                <td class="text-end text-muted small">{{ row.production_needed }}</td>
+                <td class="text-end small">{{ row.actual_production }}</td>
+                {% if prices_synced %}
+                <td class="text-end text-muted small">{{ row.isk_h_needed|isk }}</td>
+                <td class="text-end small {% if row.isk_h_actual >= row.isk_h_needed %}text-success{% else %}text-warning{% endif %}">{{ row.isk_h_actual|isk }}</td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <h6 class="text-uppercase text-muted small mb-2">
+          <i class="fas fa-cube me-1"></i>P0 Extraction
+        </h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th style="min-width:160px">Resource</th>
+                <th class="text-end" style="width:80px">Need/h</th>
+                <th class="text-end" style="width:80px">Have/h</th>
+                <th class="text-end" style="width:80px">Gap</th>
+                {% if prices_synced %}
+                <th class="text-end" style="width:100px">ISK target</th>
+                <th class="text-end" style="width:100px">ISK current</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in project_data.extraction %}
+              <tr>
+                <td class="small">{{ row.resource }}</td>
+                <td class="text-end text-muted small">{{ row.extraction_needed|floatformat:0 }}</td>
+                <td class="text-end small">{{ row.actual_extraction|floatformat:0 }}</td>
+                <td class="text-end fw-bold small {% if row.gap >= 0 %}text-success{% else %}text-danger{% endif %}">
+                  {% if row.gap >= 0 %}+{% endif %}{{ row.gap|floatformat:0 }}
+                </td>
+                {% if prices_synced %}
+                <td class="text-end text-muted small">{{ row.isk_h_needed|isk }}</td>
+                <td class="text-end small {% if row.isk_h_actual >= row.isk_h_needed %}text-success{% else %}text-warning{% endif %}">{{ row.isk_h_actual|isk }}</td>
+                {% endif %}
+              </tr>
+              {% empty %}
+              <tr><td colspan="{% if prices_synced %}6{% else %}4{% endif %}" class="text-muted text-center small py-2">No extraction requirements.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-muted small py-2">No analysis data available.</div>
+        {% endif %}
+      </div><!-- /tab-analysis -->
+
+      <!-- ── Tab: Manage ────────────────────────────────────────────────────── -->
+      <div class="tab-pane fade" id="tab-manage">
+        <div class="row g-4">
+
+          <!-- Production Targets -->
+          <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                <span class="fw-semibold small"><i class="fas fa-bullseye me-1"></i>Production Targets</span>
+                <button class="btn btn-sm btn-outline-primary py-0 px-2 btn-add-objective"
+                        data-pk="{{ selected_project.pk }}">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+              <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                  <tbody>
+                    {% for obj in selected_project.objectives.all %}
+                    <tr>
+                      <td class="small ps-3">{{ obj.schematic_name }}</td>
+                      <td class="small text-center text-muted">{{ obj.target_qty_per_hour }}/h</td>
+                      <td class="text-end pe-2">
+                        <button class="btn btn-outline-secondary py-0 px-1 btn-edit-objective pi-text-sm"
+                                data-pk="{{ obj.pk }}" data-schematic="{{ obj.schematic_name }}"
+                                data-qty="{{ obj.target_qty_per_hour }}">
+                          <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn btn-outline-danger py-0 px-1 ms-1 btn-del-objective pi-text-sm"
+                                data-pk="{{ obj.pk }}">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-muted text-center py-3 small">No targets defined.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assigned Planets -->
+          <div class="col-lg-7">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                <span class="fw-semibold small"><i class="fas fa-globe me-1"></i>Assigned Planets</span>
+                <button class="btn btn-sm btn-outline-primary py-0 px-2 btn-add-planet"
+                        data-pk="{{ selected_project.pk }}"
+                        data-assigned="{% for pp in selected_project.assigned_planets.all %}{{ pp.planet.pk }},{% endfor %}">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+              <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-3 small">Character</th>
+                      <th class="small">Planet</th>
+                      <th class="small">System</th>
+                      <th class="small">Role</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for pp in selected_project.assigned_planets.all %}
+                    <tr>
+                      <td class="ps-3 small text-truncate" style="max-width:120px">{{ pp.planet.owner.character.character_name }}</td>
+                      <td class="small">
+                        {{ pp.planet.planet_name }}
+                        <span class="badge bg-light text-dark border ms-1 pi-text-tiny">{{ pp.planet.get_planet_type_display }}</span>
+                      </td>
+                      <td class="small text-muted">{{ pp.planet.solar_system_name }}</td>
+                      <td>
+                        <select class="form-select form-select-sm role-select py-0 pi-text-nav"
+                                data-pk="{{ pp.pk }}"
+                                style="min-width:100px;height:24px">
+                          <option value="" {% if not pp.role %}selected{% endif %}>—</option>
+                          <option value="miner" {% if pp.role == "miner" %}selected{% endif %}>Miner</option>
+                          <option value="factory" {% if pp.role == "factory" %}selected{% endif %}>Factory</option>
+                          <option value="factory_p4" {% if pp.role == "factory_p4" %}selected{% endif %}>P4 Factory</option>
+                        </select>
+                      </td>
+                      <td class="text-end pe-2">
+                        <button class="btn btn-outline-danger py-0 px-1 btn-remove-planet pi-text-sm"
+                                data-pk="{{ pp.pk }}">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-muted text-center py-3 small">No planets assigned.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Danger zone -->
+        <div class="mt-4 pt-3 border-top">
+          <form id="form-delete-project" method="post"
+                action="{% url 'aa_pi_tracker:delete_project' selected_project.pk %}">
+            {% csrf_token %}
+          </form>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-delete-project">
+            <i class="fas fa-trash me-1"></i>Delete Project
+          </button>
+          <span class="text-muted small ms-2">This action cannot be undone.</span>
+        </div>
+      </div><!-- /tab-manage -->
+
+    </div><!-- /tab-content -->
+    {% endif %}
+
+  </div><!-- /main -->
+</div><!-- /row -->
+</div><!-- /container -->
+
+<!-- ── Modals ──────────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="modal-new-project" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="fas fa-folder-plus me-1"></i>New Project</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="new-project-name"
+                 placeholder="e.g. WMF Chain">
+        </div>
+        <div>
+          <label class="form-label small">Description <span class="text-muted">(optional)</span></label>
+          <input type="text" class="form-control form-control-sm" id="new-project-desc">
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-submit-new-project">
+          <i class="fas fa-check me-1"></i>Create
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-add-objective" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="fas fa-bullseye me-1"></i>Add Production Target</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Schematic <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="obj-schematic">
+            <option value="">— select —</option>
+            {% for group_label, choices in schematic_choices %}
+            <optgroup label="{{ group_label }}">
+              {% for val, label in choices %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label fw-bold small">Target Qty/h <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="obj-qty">
+            {% for qty in target_qty_choices %}
+            <option value="{{ qty }}">{{ qty }}/h</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-submit-objective">
+          <i class="fas fa-check me-1"></i>Add
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-edit-objective" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="fas fa-pen me-1"></i>Edit Target</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Schematic</label>
+          <input type="text" class="form-control form-control-sm bg-light" id="edit-obj-schematic" readonly>
+        </div>
+        <div>
+          <label class="form-label small fw-bold">Target Qty/h</label>
+          <select class="form-select form-select-sm" id="edit-obj-qty">
+            {% for qty in target_qty_choices %}
+            <option value="{{ qty }}">{{ qty }}/h</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-submit-edit-objective">
+          <i class="fas fa-check me-1"></i>Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-add-planet" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="fas fa-globe me-1"></i>Assign Planet</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-bold small">Planet</label>
+        <select class="form-select form-select-sm" id="planet-select"></select>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-submit-planet">
+          <i class="fas fa-check me-1"></i>Assign
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+  "use strict";
+  function reload(pk) {
+    const url = new URL(window.location.href);
+    if (pk) url.searchParams.set("project", pk);
+    else url.searchParams.delete("project");
+    window.location.href = url.toString();
+  }
+  const activePk = () => new URLSearchParams(window.location.search).get("project");
+
+  // ── New project ──────────────────────────────────────────────────────────
+  let _newProjModal = null;
+  function openNewProject() {
+    document.getElementById("new-project-name").value = "";
+    document.getElementById("new-project-desc").value = "";
+    _newProjModal = new bootstrap.Modal(document.getElementById("modal-new-project"));
+    _newProjModal.show();
+    setTimeout(() => document.getElementById("new-project-name").focus(), 200);
+  }
+  document.getElementById("btn-new-project")?.addEventListener("click", openNewProject);
+  document.getElementById("btn-new-project-empty")?.addEventListener("click", openNewProject);
+  document.getElementById("new-project-name")?.addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("btn-submit-new-project")?.click();
+  });
+  document.getElementById("btn-submit-new-project")?.addEventListener("click", () => {
+    const name = document.getElementById("new-project-name").value.trim();
+    if (!name) { document.getElementById("new-project-name").focus(); return; }
+    fetchPost("{% url 'aa_pi_tracker:create_project' %}", {
+      name,
+      description: document.getElementById("new-project-desc").value.trim(),
+    }).then(r => {
+      if (r.ok) { _newProjModal?.hide(); reload(r.pk); }
+      else alert(r.error ?? "Error creating project");
+    });
+  });
+
+  // ── Delete project ───────────────────────────────────────────────────────
+  document.querySelector(".btn-delete-project")?.addEventListener("click", function () {
+    if (!confirm("Delete this project? This cannot be undone.")) return;
+    document.getElementById("form-delete-project").submit();
+  });
+
+  // ── Objectives ───────────────────────────────────────────────────────────
+  let _addObjModal = null, _curProjPk = null;
+  document.querySelectorAll(".btn-add-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      _curProjPk = this.dataset.pk;
+      document.getElementById("obj-schematic").value = "";
+      _addObjModal = new bootstrap.Modal(document.getElementById("modal-add-objective"));
+      _addObjModal.show();
+    });
+  });
+  document.getElementById("btn-submit-objective")?.addEventListener("click", () => {
+    const schematic = document.getElementById("obj-schematic").value;
+    if (!schematic || !_curProjPk) return;
+    const url = "{% url 'aa_pi_tracker:add_objective' 0 %}".replace("/0/", "/" + _curProjPk + "/");
+    fetchPost(url, {schematic_name:schematic, target_qty_per_hour:document.getElementById("obj-qty").value})
+      .then(r => { if (r.ok) { _addObjModal?.hide(); reload(activePk()); } });
+  });
+
+  let _editObjModal = null, _editObjPk = null;
+  document.querySelectorAll(".btn-edit-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      _editObjPk = this.dataset.pk;
+      document.getElementById("edit-obj-schematic").value = this.dataset.schematic;
+      document.getElementById("edit-obj-qty").value = this.dataset.qty;
+      _editObjModal = new bootstrap.Modal(document.getElementById("modal-edit-objective"));
+      _editObjModal.show();
+    });
+  });
+  document.getElementById("btn-submit-edit-objective")?.addEventListener("click", () => {
+    const url = "{% url 'aa_pi_tracker:edit_objective' 0 %}".replace("/0/", "/" + _editObjPk + "/");
+    fetchPost(url, {target_qty_per_hour:document.getElementById("edit-obj-qty").value})
+      .then(r => { if (r.ok) { _editObjModal?.hide(); reload(activePk()); } });
+  });
+
+  document.querySelectorAll(".btn-del-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const url = "{% url 'aa_pi_tracker:delete_objective' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
+      fetchPost(url, {}).then(r => { if (r.ok) reload(activePk()); });
+    });
+  });
+
+  // ── Assign / remove planets ──────────────────────────────────────────────
+  const allPlanets = [
+    {% for row in all_planets %}{pk:"{{ row.planet.pk }}", label:"{{ row.owner.character.character_name }} · {{ row.planet.planet_name }} · {{ row.system }} ({{ row.planet.get_planet_type_display }})"},
+    {% endfor %}
+  ];
+
+  let _addPlanetModal = null;
+  document.querySelectorAll(".btn-add-planet").forEach(btn => {
+    btn.addEventListener("click", function () {
+      _curProjPk = this.dataset.pk;
+      const assigned = new Set((this.dataset.assigned || "").split(",").filter(Boolean));
+      const sel = document.getElementById("planet-select");
+      sel.innerHTML = '<option value="">— select planet —</option>';
+      const avail = allPlanets.filter(p => !assigned.has(p.pk));
+      avail.forEach(p => {
+        const o = document.createElement("option");
+        o.value = p.pk; o.textContent = p.label;
+        sel.appendChild(o);
+      });
+      if (!avail.length) sel.innerHTML = '<option disabled>All planets already assigned.</option>';
+      _addPlanetModal = new bootstrap.Modal(document.getElementById("modal-add-planet"));
+      _addPlanetModal.show();
+    });
+  });
+  document.getElementById("btn-submit-planet")?.addEventListener("click", () => {
+    const planetPk = document.getElementById("planet-select").value;
+    if (!planetPk || !_curProjPk) return;
+    const url = "{% url 'aa_pi_tracker:add_project_planet' 0 %}".replace("/0/", "/" + _curProjPk + "/");
+    fetchPost(url, {planet_pk:planetPk})
+      .then(r => { if (r.ok) { _addPlanetModal?.hide(); reload(activePk()); } });
+  });
+
+  document.querySelectorAll(".btn-remove-planet").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const url = "{% url 'aa_pi_tracker:remove_project_planet' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
+      fetchPost(url, {}).then(r => { if (r.ok) reload(activePk()); });
+    });
+  });
+
+  // ── Inline role update ───────────────────────────────────────────────────────
+  document.querySelectorAll(".role-select").forEach(sel => {
+    sel.addEventListener("change", function () {
+      const url = "{% url 'aa_pi_tracker:update_project_planet_role' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
+      fetchPost(url, {role: this.value}).then(r => {
+        if (r.ok) reload(activePk());
+        else { alert("Failed to update role"); this.value = this.dataset.prev || ""; }
+      });
+    });
+    sel.addEventListener("focus", function () { this.dataset.prev = this.value; });
+  });
+
+  // ── Restore last active tab ──────────────────────────────────────────────
+  const TAB_KEY = "proj_tab_{{ selected_project.pk|default:'' }}";
+  const savedTab = sessionStorage.getItem(TAB_KEY);
+  if (savedTab) {
+    const el = document.querySelector(`[href="${savedTab}"]`);
+    if (el) bootstrap.Tab.getOrCreateInstance(el).show();
+  }
+  document.querySelectorAll('#project-tabs a[data-bs-toggle="tab"]').forEach(el => {
+    el.addEventListener("shown.bs.tab", e => {
+      sessionStorage.setItem(TAB_KEY, e.target.getAttribute("href"));
+    });
+  });
+
+}());
+</script>
+{% endblock %}

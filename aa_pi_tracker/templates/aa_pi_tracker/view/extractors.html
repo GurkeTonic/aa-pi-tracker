@@ -1,0 +1,89 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters static %}
+
+{% block page_title %}{% trans "PI Tracker — Extractors" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> {% trans "Add Character" %}</a>
+</li>
+<li class="nav-item ms-1">
+  <button class="btn btn-outline-secondary btn-sm" id="btn-sync"><i class="fas fa-sync"></i> {% trans "Sync" %}</button>
+</li>
+{% endblock %}
+
+{% block extra_css %}{% include "bundles/datatables-css-bs5.html" %}{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Extractors" %}
+<div class="container-fluid mt-3">
+  <div class="table-responsive">
+    <table id="tbl-extractors" class="table table-sm table-hover" style="width:100%">
+      <thead class="table-dark">
+        <tr>
+          <th>{% trans "Character" %}</th><th>{% trans "Region" %}</th><th>{% trans "System" %}</th><th>{% trans "Planet" %}</th><th>{% trans "Type" %}</th>
+          <th>{% trans "Product" %}</th><th title="{% trans 'Heads' %}">H</th><th>{% trans "Progress" %}</th><th>{% trans "Time Left" %}</th>
+          <th class="text-end">{% trans "Qty / h" %}</th>{% if prices_synced %}<th class="text-end">{% trans "ISK / h" %}</th>{% endif %}<th>{% trans "Cycle" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in extractors %}
+        <tr>
+          <td style="border-left:4px solid {% if e.urgency == 'expired' %}#dc3545{% elif e.urgency == 'critical' %}#ffc107{% elif e.urgency == 'warning' %}#0dcaf0{% else %}#198754{% endif %}">{{ e.character }}</td>
+          <td>{{ e.region }}</td>
+          <td><span class="badge bg-{{ e.sec_class }}">{{ e.sec_display }}</span> {{ e.system }}</td>
+          <td>{{ e.planet_name }}</td>
+          <td><span class="badge bg-secondary">{{ e.planet_type }}</span></td>
+          <td><strong>{{ e.product }}</strong></td>
+          <td class="text-center">{{ e.head_count }}</td>
+          <td style="min-width:100px">
+            <div class="progress" style="height:13px">
+              <div class="progress-bar {% if e.urgency == 'expired' %}bg-danger{% elif e.urgency == 'critical' %}bg-warning{% elif e.urgency == 'warning' %}bg-info{% else %}bg-success{% endif %}" style="width:{{ e.progress }}%">
+                <small class="{% if e.urgency == 'critical' %}text-dark{% endif %}">{{ e.progress }}%</small>
+              </div>
+            </div>
+          </td>
+          <td class="fw-bold {% if e.urgency == 'expired' %}text-danger{% elif e.urgency == 'critical' %}text-warning{% elif e.urgency == 'warning' %}text-info{% endif %}">{{ e.time_remaining }}</td>
+          <td class="text-end">{{ e.qty_per_hour|floatformat:0 }}</td>
+          {% if prices_synced %}<td class="text-end text-success">{{ e.isk_per_hour|isk }}</td>{% endif %}
+          <td class="text-muted small">{{ e.cycle_display }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="12" class="text-center text-muted py-4">{% trans "No active extractors found." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+{% include "bundles/datatables-js-bs5.html" %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+  "use strict";
+  document.addEventListener("DOMContentLoaded", () => {
+    $("#tbl-extractors").DataTable({
+      pageLength: 50,
+      language: {search: "Filter:"},
+      order: [],
+      columnDefs: [{orderable: false, targets: 7}]
+    });
+  });
+  document.getElementById("btn-sync")?.addEventListener("click", function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> {% trans "Queuing…" %}';
+    fetchPost("{% url 'aa_pi_tracker:trigger_sync' %}", {}).then(() => {
+      btn.innerHTML = '<i class="fas fa-check"></i> {% trans "Queued" %}';
+      btn.title = "{% trans 'ESI sync queued — data updates within ~10 minutes' %}";
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync" %}'; btn.title = ""; }, 15000);
+    }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync" %}'; });
+  });
+}());
+</script>
+{% endblock %}

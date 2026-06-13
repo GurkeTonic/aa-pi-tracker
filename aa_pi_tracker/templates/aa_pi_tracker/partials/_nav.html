@@ -1,0 +1,66 @@
+{% load i18n %}
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'overview' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:index' %}">
+    <i class="fas fa-tachometer-alt me-1"></i>Overview
+  </a>
+</li>
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'projects' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:projects' %}">
+    <i class="fas fa-folder me-1"></i>Projects
+  </a>
+</li>
+{% if perms.aa_pi_tracker.manage_corp_pi %}
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'corp_projects' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:corp_projects' %}">
+    <i class="fas fa-users me-1"></i>Corp
+  </a>
+</li>
+{% elif perms.aa_pi_tracker.view_pi %}
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'corp_projects' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:corp_projects_member' %}">
+    <i class="fas fa-users me-1"></i>Corp
+  </a>
+</li>
+{% endif %}
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'extractors' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:extractors' %}">
+    <i class="fas fa-clock me-1"></i>Extractors
+    {% if nav_urgent > 0 %}<span class="badge bg-danger ms-1">{{ nav_urgent }}</span>{% endif %}
+  </a>
+</li>
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'planets' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:planets' %}">
+    <i class="fas fa-globe me-1"></i>Planets
+  </a>
+</li>
+<li class="nav-item d-none d-lg-flex align-items-center px-1">
+  <span class="text-muted pi-text-nav" style="opacity:.4">|</span>
+</li>
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'optimizer' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:optimizer' %}">
+    <i class="fas fa-magic me-1"></i>Optimizer
+  </a>
+</li>
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'profit' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:profit' %}">
+    <i class="fas fa-coins me-1"></i>Profit
+  </a>
+</li>
+<li class="nav-item d-none d-lg-flex align-items-center px-1">
+  <span class="text-muted pi-text-nav" style="opacity:.4">|</span>
+</li>
+<li class="nav-item">
+  <a class="nav-link {% if active_page == 'characters' %}active{% endif %}"
+     href="{% url 'aa_pi_tracker:characters' %}">
+    <i class="fas fa-user me-1"></i>Characters
+    {% if nav_char_count %}<span class="badge bg-secondary ms-1">{{ nav_char_count }}</span>{% endif %}
+  </a>
+</li>

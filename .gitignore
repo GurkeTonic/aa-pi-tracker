@@ -9,3 +9,6 @@ coverage.xml
 *.sqlite3
 /static/
 /log/
+
+# Claude Code
+.claude/

@@ -1,0 +1,341 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n evelinks static %}
+
+{% block page_title %}{% trans "PI Tracker — Corp Projects" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modal-create-corp-project">
+    <i class="fas fa-plus"></i> {% trans "New Corp Project" %}
+  </button>
+</li>
+{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Corp Projects" %}
+<div class="container-fluid mt-3">
+
+  {% if corp_name %}
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <img src="{{ corp_id|corporation_logo_url:32 }}"
+         class="rounded" width="28" height="28" alt="">
+    <span class="fw-semibold">{{ corp_name }}</span>
+    <span class="text-muted small ms-1">— Corp PI Manager</span>
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Left: Shared Characters pool -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-semibold">
+          <i class="fas fa-share-alt me-2"></i>{% trans "Shared Characters" %}
+          <span class="badge bg-secondary ms-1">{{ shared_owners|length }}</span>
+        </div>
+        <div class="card-body p-0">
+          {% if shared_owners %}
+          <ul class="list-group list-group-flush" id="shared-owners-list">
+            {% for owner in shared_owners %}
+            <li class="list-group-item d-flex align-items-center gap-2 py-2 px-3"
+                data-owner-pk="{{ owner.pk }}"
+                data-char-name="{{ owner.character.character_name }}">
+              <img src="{{ owner.character.character_id|character_portrait_url:32 }}"
+                   class="rounded" width="24" height="24" alt="">
+              <span class="flex-grow-1 small">{{ owner.character.character_name }}</span>
+              <span class="text-muted pi-text-sm">{{ owner.user.username }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="p-3 text-muted small">
+            <i class="fas fa-info-circle me-1"></i>
+            No characters shared yet. Members share their characters via the <strong>Characters</strong> page.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Corp Projects list -->
+    <div class="col-lg-8">
+      {% if corp_projects %}
+      {% for project in corp_projects %}
+      <div class="card border-0 shadow-sm mb-3" id="corp-project-{{ project.pk }}">
+        <div class="card-header bg-transparent d-flex align-items-center gap-2">
+          <i class="fas fa-folder-open text-primary me-1"></i>
+          <span class="fw-semibold flex-grow-1">{{ project.name }}</span>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary btn-manage-participants"
+                    data-project-pk="{{ project.pk }}"
+                    data-project-name="{{ project.name }}"
+                    data-url="{% url 'aa_pi_tracker:corp_project_set_participants' project.pk %}">
+              <i class="fas fa-user-cog"></i> Manage Members
+            </button>
+            <a href="{% url 'aa_pi_tracker:buildout_page' project.pk %}"
+               class="btn btn-sm btn-outline-info">
+              <i class="fas fa-hammer"></i> Build-Out
+            </a>
+            <a href="{% url 'aa_pi_tracker:maintenance_page' project.pk %}"
+               class="btn btn-sm btn-outline-warning">
+              <i class="fas fa-tools"></i> Maintenance
+            </a>
+            <button class="btn btn-sm btn-outline-danger btn-delete-corp-project"
+                    data-pk="{{ project.pk }}"
+                    data-url="{% url 'aa_pi_tracker:delete_corp_project' project.pk %}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Objectives -->
+          <div class="mb-3">
+            <div class="d-flex align-items-center mb-2">
+              <span class="small fw-semibold me-auto">Objectives</span>
+              <button class="btn btn-outline-primary btn-sm btn-add-corp-objective"
+                      data-project-pk="{{ project.pk }}"
+                      data-url="{% url 'aa_pi_tracker:corp_project_add_objective' project.pk %}">
+                <i class="fas fa-plus"></i> Add Objective
+              </button>
+            </div>
+            {% if project.objectives.all %}
+            <div class="d-flex flex-wrap gap-2">
+              {% for obj in project.objectives.all %}
+              <span class="badge bg-secondary d-flex align-items-center gap-1" style="font-size:.75rem">
+                {{ obj.schematic_name }} × {{ obj.target_qty_per_hour }}/h
+                <button type="button" class="btn-close btn-close-white btn-delete-corp-objective pi-text-xxs"
+                        data-pk="{{ obj.pk }}"
+                        data-url="{% url 'aa_pi_tracker:corp_project_delete_objective' obj.pk %}"></button>
+              </span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <span class="text-muted small">No objectives yet.</span>
+            {% endif %}
+          </div>
+
+          <!-- Participants -->
+          <div>
+            <span class="small fw-semibold">Participants</span>
+            {% if project.participants.all %}
+            <div class="d-flex flex-wrap gap-1 mt-1">
+              {% for p in project.participants.all %}
+              <span class="badge bg-info text-dark small" data-owner-pk="{{ p.pk }}">
+                <img src="{{ p.character.character_id|character_portrait_url:32 }}"
+                     class="rounded" width="14" height="14" alt="">
+                {{ p.character.character_name }}
+              </span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <span class="text-muted small ms-2">No participants assigned.</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        No Corp Projects yet. Click <strong>New Corp Project</strong> to create one.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create Corp Project -->
+<div class="modal fade" id="modal-create-corp-project" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-folder-plus me-2"></i>New Corp Project</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-semibold">Project Name</label>
+        <input type="text" id="corp-project-name" class="form-control" placeholder="e.g. P4 Broadcast Nodes">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-create-corp-project">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Manage Participants -->
+<div class="modal fade" id="modal-manage-participants" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-cog me-2"></i>Manage Participants — <span id="mp-project-name"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Select which shared characters participate in this project.</p>
+        <div id="mp-char-list" class="d-flex flex-column gap-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-save-participants">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Corp Objective -->
+<div class="modal fade" id="modal-add-corp-objective" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add Objective</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Product</label>
+          <select id="corp-obj-schematic" class="form-select">
+            {% for group_label, group_choices in schematic_choices %}
+            <optgroup label="{{ group_label }}">
+              {% for value, display in group_choices %}
+              <option value="{{ value }}">{{ display }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label fw-semibold">Target Qty/h</label>
+          <input type="number" id="corp-obj-qty" class="form-control" value="1" min="1" max="50">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-save-corp-objective">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+  "use strict";
+
+  function postMulti(url, data) {
+    const fd = new FormData();
+    fd.append("csrfmiddlewaretoken", piCsrf());
+    for (const [k, vs] of Object.entries(data)) {
+      if (Array.isArray(vs)) vs.forEach(v => fd.append(k, v));
+      else fd.append(k, vs);
+    }
+    return fetch(url, {method: "POST", body: fd}).then(r => r.json());
+  }
+
+  // Shared owners pool data (from server)
+  const sharedOwners = [
+    {% for owner in shared_owners %}
+    {pk: {{ owner.pk }}, name: "{{ owner.character.character_name|escapejs }}"},
+    {% endfor %}
+  ];
+
+  // Create Corp Project
+  document.getElementById("btn-create-corp-project")?.addEventListener("click", function () {
+    const name = document.getElementById("corp-project-name").value.trim();
+    if (!name) { alert("Project name required."); return; }
+    fetchPost("{% url 'aa_pi_tracker:create_corp_project' %}", {name})
+      .then(data => {
+        if (data.ok) location.reload();
+        else alert(data.error || "Error creating project.");
+      }).catch(() => alert("Network error."));
+  });
+
+  // Delete Corp Project
+  document.querySelectorAll(".btn-delete-corp-project").forEach(btn => {
+    btn.addEventListener("click", function () {
+      if (!confirm("Delete this corp project?")) return;
+      const pk = this.dataset.pk;
+      const url = this.dataset.url;
+      fetchPost(url, {})
+        .then(data => { if (data.ok) document.getElementById(`corp-project-${pk}`)?.remove(); })
+        .catch(() => alert("Error."));
+    });
+  });
+
+  // Delete Corp Objective
+  document.querySelectorAll(".btn-delete-corp-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const url = this.dataset.url;
+      const badge = this.closest(".badge");
+      fetchPost(url, {})
+        .then(data => { if (data.ok) badge?.remove(); })
+        .catch(() => alert("Error."));
+    });
+  });
+
+  // Manage Participants
+  let currentParticipantsUrl = null;
+
+  document.querySelectorAll(".btn-manage-participants").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const projectPk = this.dataset.projectPk;
+      currentParticipantsUrl = this.dataset.url;
+      document.getElementById("mp-project-name").textContent = this.dataset.projectName;
+
+      // Read current participant badges from the project card
+      const card = document.getElementById(`corp-project-${projectPk}`);
+      const currentPks = new Set();
+      card.querySelectorAll(".badge[data-owner-pk]").forEach(el => currentPks.add(el.dataset.ownerPk));
+
+      // Build checkbox list
+      const list = document.getElementById("mp-char-list");
+      list.innerHTML = "";
+      sharedOwners.forEach(owner => {
+        const id = `mp-chk-${owner.pk}`;
+        const div = document.createElement("div");
+        div.className = "form-check";
+        div.innerHTML = `<input class="form-check-input" type="checkbox" id="${id}" value="${owner.pk}"${currentPks.has(String(owner.pk)) ? " checked" : ""}>`
+          + `<label class="form-check-label ms-1" for="${id}">${owner.name}</label>`;
+        list.appendChild(div);
+      });
+
+      new bootstrap.Modal(document.getElementById("modal-manage-participants")).show();
+    });
+  });
+
+  document.getElementById("btn-save-participants")?.addEventListener("click", function () {
+    const checked = [...document.querySelectorAll("#mp-char-list input:checked")].map(el => el.value);
+    postMulti(currentParticipantsUrl, {"owner_pks": checked})
+      .then(data => {
+        if (data.ok) location.reload();
+        else alert(data.error || "Error saving participants.");
+      }).catch(() => alert("Network error."));
+  });
+
+  // Add Corp Objective
+  let addObjUrl = null;
+  document.querySelectorAll(".btn-add-corp-objective").forEach(btn => {
+    btn.addEventListener("click", function () {
+      addObjUrl = this.dataset.url;
+      new bootstrap.Modal(document.getElementById("modal-add-corp-objective")).show();
+    });
+  });
+
+  document.getElementById("btn-save-corp-objective")?.addEventListener("click", function () {
+    const schematic_name = document.getElementById("corp-obj-schematic").value;
+    const target_qty_per_hour = document.getElementById("corp-obj-qty").value;
+    fetchPost(addObjUrl, {schematic_name, target_qty_per_hour})
+      .then(data => {
+        if (data.ok) location.reload();
+        else alert(data.error || "Error adding objective.");
+      }).catch(() => alert("Network error."));
+  });
+
+}());
+</script>
+{% endblock %}

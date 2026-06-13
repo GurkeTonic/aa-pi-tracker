@@ -1,0 +1,845 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n static %}
+
+{% block page_title %}{% trans "PI Tracker — Optimizer" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-plus"></i> {% trans "Add Character" %}
+  </a>
+</li>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'aa_pi_tracker/css/pi_tracker.css' %}">
+{% endblock %}
+
+{% block content %}
+{% trans "Build Optimizer" as page_title %}{% include "framework/header/page-header.html" with title=page_title %}
+<div class="container-fluid mt-3">
+
+  <div class="row g-3">
+
+    <!-- ── Input panel ─────────────────────────────────────────────────── -->
+    <div class="col-lg-4">
+
+      <!-- Planet pool summary -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2">
+          {% if has_corp_perm and corp_pools %}
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="small fw-semibold">{% trans "Mode" %}:</span>
+            <div class="btn-group btn-group-sm" role="group">
+              <input type="radio" class="btn-check" name="opt-mode-radio" id="opt-mode-personal" autocomplete="off" checked>
+              <label class="btn btn-outline-primary" for="opt-mode-personal">
+                <i class="fas fa-user me-1"></i>{% trans "Personal" %}
+              </label>
+              <input type="radio" class="btn-check" name="opt-mode-radio" id="opt-mode-corp" autocomplete="off">
+              <label class="btn btn-outline-warning" for="opt-mode-corp">
+                <i class="fas fa-users me-1"></i>{% trans "Corp" %}
+              </label>
+            </div>
+          </div>
+          {% endif %}
+          <!-- Personal pool -->
+          <div id="pool-personal">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="badge bg-success" title="{% trans 'Free colonized planets' %}">{{ pools.free_count }} {% trans "colonized" %}</span>
+              {% if pools.new_slots_count %}
+              <span class="badge bg-info text-dark">+{{ pools.new_slots_count }} {% blocktrans count n=pools.new_slots_count %}empty slot{% plural %}empty slots{% endblocktrans %}</span>
+              {% endif %}
+              {% if pools.locked_count %}
+              <span class="badge bg-secondary">{{ pools.locked_count }} {% trans "locked to projects" %}</span>
+              {% endif %}
+              {% if pools.unknown_p0_count %}
+              <span class="badge bg-warning text-dark"><i class="fas fa-question-circle me-1"></i>{{ pools.unknown_p0_count }} {% trans "P0 unknown" %}</span>
+              {% endif %}
+            </div>
+            {% if pools.total_free_slots == 0 %}
+            <p class="text-warning small mt-2 mb-0"><i class="fas fa-exclamation-triangle me-1"></i>{% trans "No free planet slots." %}</p>
+            {% endif %}
+          </div>
+          {% if has_corp_perm and corp_pools %}
+          <!-- Corp pool -->
+          <div id="pool-corp" style="display:none">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="badge bg-success">{{ corp_pools.free_count }} {% trans "colonized" %}</span>
+              {% if corp_pools.new_slots_count %}
+              <span class="badge bg-info text-dark">+{{ corp_pools.new_slots_count }} {% blocktrans count n=corp_pools.new_slots_count %}empty slot{% plural %}empty slots{% endblocktrans %}</span>
+              {% endif %}
+              {% if corp_pools.locked_count %}
+              <span class="badge bg-secondary">{{ corp_pools.locked_count }} {% trans "locked to projects" %}</span>
+              {% endif %}
+              {% if corp_pools.unknown_p0_count %}
+              <span class="badge bg-warning text-dark"><i class="fas fa-question-circle me-1"></i>{{ corp_pools.unknown_p0_count }} {% trans "P0 unknown" %}</span>
+              {% endif %}
+            </div>
+            <p class="text-warning small mt-1 mb-0"><i class="fas fa-info-circle me-1"></i>{% trans "Corp Mode: plan uses all shared corp chars." %}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Input form -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary text-white py-2">
+          <i class="fas fa-magic me-1"></i><strong>{% trans "PI Optimizer" %}</strong>
+        </div>
+        <div class="card-body">
+
+          <!-- Home system -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">{% trans "Home System" %}
+              <span class="text-muted fw-normal small">({% trans "optional — filters planets by jump range" %})</span>
+            </label>
+            <div class="position-relative">
+              <div class="input-group">
+                <input type="text" class="form-control" id="opt-system-input"
+                       placeholder="{% trans 'Search system…' %}" autocomplete="off">
+                <input type="hidden" id="opt-system-id">
+                <button class="btn btn-outline-secondary" id="btn-save-home-sys" type="button"
+                        title="{% trans 'Save as Home System' %}" style="display:none">
+                  <i class="fas fa-home"></i>
+                </button>
+              </div>
+              <div id="opt-system-dropdown"
+                   class="dropdown-menu w-100 shadow-sm"
+                   style="display:none;max-height:240px;overflow-y:auto"></div>
+            </div>
+            <div id="opt-system-selected" class="text-success small mt-1" style="display:none"></div>
+          </div>
+
+          <!-- Max jumps -->
+          <div class="mb-3" id="opt-jumps-row" style="display:none">
+            <label class="form-label fw-bold">{% trans "Max Jumps" %}</label>
+            <div class="d-flex align-items-center gap-2">
+              <input type="range" class="form-range flex-grow-1"
+                     id="opt-jumps" min="0" max="15" value="5">
+              <span class="badge bg-secondary fs-6" id="opt-jumps-label">5</span>
+            </div>
+          </div>
+
+          <!-- POCO Tax Rate -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">{% trans "POCO Tax Rate" %}
+              <span class="text-muted fw-normal small">({% trans "export + import" %})</span>
+            </label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="opt-tax-rate"
+                     min="0" max="100" step="0.5" value="0" placeholder="0">
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+
+          <!-- Mode -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">{% trans "Mode" %}</label>
+            <div class="d-flex gap-2">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="opt-mode"
+                       id="mode-target" value="target" checked>
+                <label class="form-check-label" for="mode-target">
+                  <i class="fas fa-crosshairs me-1"></i>{% trans "Target Product" %}
+                </label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="opt-mode"
+                       id="mode-isk" value="max_isk">
+                <label class="form-check-label" for="mode-isk">
+                  <i class="fas fa-coins me-1"></i>{% trans "Best ISK/h" %}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Target product (shown only in target mode) -->
+          <div class="mb-3" id="target-select-row">
+            <label class="form-label fw-bold">{% trans "Target Product" %} <span class="text-danger">*</span></label>
+            <select class="form-select" id="opt-target-schematic">
+              <option value="">— select target product —</option>
+              {% for group_label, choices in schematic_choices %}
+              <optgroup label="{{ group_label }}">
+                {% for val, label in choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </optgroup>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Qty/h -->
+          <div class="mb-4" id="qty-row">
+            <label class="form-label fw-bold">{% trans "Quantity / h" %}
+              <span class="text-muted fw-normal small" id="qty-row-hint">({% trans "target output rate" %})</span>
+            </label>
+            <div class="d-flex align-items-center gap-2">
+              <input type="range" class="form-range flex-grow-1"
+                     id="opt-qty" min="1" max="10" value="1">
+              <span class="badge bg-secondary fs-6" id="opt-qty-label">1 / h</span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary w-100" id="btn-opt-calc">
+            <i class="fas fa-calculator me-1"></i>{% trans "Calculate Plan" %}
+          </button>
+        </div>
+      </div>
+
+      <!-- Free planets by char (quick overview) -->
+      {% if pools.by_char %}
+      <div class="mt-3">
+        {% for char_name, char_data in pools.by_char.items %}
+        <div class="card border-0 shadow-sm mb-2 px-3 py-2">
+          <div class="fw-semibold small mb-1">{{ char_name }}
+            <span class="text-muted fw-normal" style="font-size:.7rem">
+              {{ char_data.free_slots }} free slot{{ char_data.free_slots|pluralize }}
+            </span>
+          </div>
+          <div class="d-flex flex-wrap gap-1">
+            {% for p in char_data.planets %}
+            <span class="badge {% if p.known_p0 %}bg-primary{% else %}bg-warning text-dark{% endif %}"
+                  style="font-size:.68rem"
+                  title="{{ p.system }} · {{ p.type_display }}{% if p.known_p0 %} · {{ p.known_p0 }}{% if p.rate %} @ {{ p.rate|floatformat:"0" }}/h{% endif %}{% else %} · P0 unknown{% endif %}">
+              {{ p.name|truncatechars:12 }}
+            </span>
+            {% endfor %}
+            {% if char_data.new_slots > 0 %}
+            <span class="badge bg-light text-muted border" style="font-size:.68rem"
+                  title="{{ char_data.new_slots }} uncolonized planet slot(s)">
+              +{{ char_data.new_slots }} empty
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div><!-- col input -->
+
+    <!-- ── Result panel ────────────────────────────────────────────────── -->
+    <div class="col-lg-8">
+      <div id="opt-result" style="display:none"></div>
+    </div>
+
+  </div><!-- row -->
+</div><!-- container -->
+
+<!-- Create Project Modal -->
+<div class="modal fade" id="create-project-modal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0" id="create-project-modal-title">
+          <i class="fas fa-folder-plus me-1"></i>{% trans "Create Project from Plan" %}
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2" id="create-project-modal-desc">
+          {% trans "Creates a project and assigns all planets in the plan to it. Assigned planets will be excluded from future optimizer runs." %}
+        </p>
+        <label class="form-label fw-bold">{% trans "Project Name" %}</label>
+        <input type="text" class="form-control" id="project-name-input">
+        <input type="hidden" id="project-planet-pks">
+        <input type="hidden" id="project-target-product">
+        <input type="hidden" id="project-is-corp" value="0">
+      </div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+        <button class="btn btn-sm btn-primary" id="btn-create-project">
+          <i class="fas fa-save me-1"></i><span id="btn-create-project-label">{% trans "Create Project" %}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P0 Set Modal -->
+<div class="modal fade" id="p0-modal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0">{% trans "Set P0 Resource" %}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2" id="p0-modal-planet-name"></p>
+        <select class="form-select form-select-sm" id="p0-modal-select"></select>
+      </div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+        <button class="btn btn-sm btn-primary" id="btn-p0-save">{% trans "Save" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+"use strict";
+const ANALYZE_URL        = "{% url 'aa_pi_tracker:optimizer_analyze_json' %}";
+const CREATE_PRJ_URL     = "{% url 'aa_pi_tracker:optimizer_create_project' %}";
+const CREATE_CORP_PRJ_URL = "{% url 'aa_pi_tracker:optimizer_create_corp_project' %}";
+const SET_RES_URL        = "{% url 'aa_pi_tracker:set_planet_resource' planet_pk=0 %}".replace('/0/', '/{pk}/');
+const SYSTEM_URL         = "{% url 'aa_pi_tracker:system_search' %}";
+const SAVE_HOME_URL      = "{% url 'aa_pi_tracker:save_home_system' %}";
+const HOME_SYS_ID        = {% if home_system_id %}{{ home_system_id }}{% else %}null{% endif %};
+const HOME_SYS_NAME      = "{{ home_system_name|escapejs }}";
+const PROJECTS_URL       = "{% url 'aa_pi_tracker:projects' %}";
+const CORP_PROJECTS_URL  = "{% url 'aa_pi_tracker:corp_projects' %}";
+const CAN_MANAGE_CORP    = {% if perms.aa_pi_tracker.manage_corp_pi %}true{% else %}false{% endif %};
+const HAS_CORP_POOL      = {% if has_corp_perm and corp_pools %}true{% else %}false{% endif %};
+let corpModeActive = false;
+
+// ── Corp Mode toggle ──────────────────────────────────────────────────────────
+if (HAS_CORP_POOL) {
+  document.getElementById('opt-mode-personal')?.addEventListener('change', function () {
+    if (this.checked) {
+      corpModeActive = false;
+      document.getElementById('pool-personal').style.display = '';
+      document.getElementById('pool-corp').style.display = 'none';
+      document.getElementById('opt-result').style.display = 'none';
+    }
+  });
+  document.getElementById('opt-mode-corp')?.addEventListener('change', function () {
+    if (this.checked) {
+      corpModeActive = true;
+      document.getElementById('pool-personal').style.display = 'none';
+      document.getElementById('pool-corp').style.display = '';
+      document.getElementById('opt-result').style.display = 'none';
+    }
+  });
+}
+
+// ── System search autocomplete ────────────────────────────────────────────────
+const sysInput = document.getElementById('opt-system-input');
+const sysId    = document.getElementById('opt-system-id');
+const sysDrop  = document.getElementById('opt-system-dropdown');
+const sysSel   = document.getElementById('opt-system-selected');
+const jumpsRow = document.getElementById('opt-jumps-row');
+
+let sysTimer = null;
+sysInput.addEventListener('input', () => {
+  clearTimeout(sysTimer);
+  const q = sysInput.value.trim();
+  if (q.length < 2) { sysDrop.style.display = 'none'; return; }
+  sysTimer = setTimeout(async () => {
+    const r = await fetch(`${SYSTEM_URL}?q=${encodeURIComponent(q)}`);
+    const d = await r.json();
+    sysDrop.innerHTML = d.results.map(s =>
+      `<a class="dropdown-item small py-1" href="#"
+          data-id="${s.id}" data-name="${s.name}" data-region="${s.region}">
+        <strong>${s.name}</strong>
+        <span class="text-muted ms-1">${s.region}</span>
+        <span class="badge bg-secondary ms-1">${s.sec}</span>
+      </a>`
+    ).join('') || '<span class="dropdown-item small text-muted">No results</span>';
+    sysDrop.style.display = 'block';
+    sysDrop.querySelectorAll('a[data-id]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        sysId.value   = a.dataset.id;
+        sysInput.value = a.dataset.name;
+        sysSel.textContent = `${a.dataset.name} (${a.dataset.region})`;
+        sysSel.style.display = '';
+        sysDrop.style.display = 'none';
+        jumpsRow.style.display = '';
+        document.getElementById('btn-save-home-sys').style.display = '';
+      });
+    });
+  }, 250);
+});
+document.addEventListener('click', e => {
+  if (!sysDrop.contains(e.target) && e.target !== sysInput) sysDrop.style.display = 'none';
+});
+
+// Pre-fill home system from user settings
+if (HOME_SYS_ID) {
+  sysId.value = HOME_SYS_ID;
+  sysInput.value = HOME_SYS_NAME;
+  sysSel.textContent = HOME_SYS_NAME;
+  sysSel.style.display = '';
+  jumpsRow.style.display = '';
+  document.getElementById('btn-save-home-sys').style.display = '';
+}
+
+// Save home system button
+document.getElementById('btn-save-home-sys').addEventListener('click', async () => {
+  const id = sysId.value;
+  const name = sysInput.value.trim();
+  if (!id) return;
+  await fetchPostJson(SAVE_HOME_URL, {system_id: parseInt(id), system_name: name});
+  const btn = document.getElementById('btn-save-home-sys');
+  const origHtml = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-check"></i>';
+  btn.classList.replace('btn-outline-secondary', 'btn-success');
+  setTimeout(() => {
+    btn.innerHTML = origHtml;
+    btn.classList.replace('btn-success', 'btn-outline-secondary');
+  }, 1500);
+});
+
+// Jumps slider — update label + auto-recalculate if already calculated
+const jumpsSlider = document.getElementById('opt-jumps');
+const jumpsLabel  = document.getElementById('opt-jumps-label');
+let _calcDone = false;
+let _recalcTimer = null;
+jumpsSlider.addEventListener('input', () => {
+  jumpsLabel.textContent = jumpsSlider.value;
+  if (_calcDone) {
+    clearTimeout(_recalcTimer);
+    _recalcTimer = setTimeout(() => document.getElementById('btn-opt-calc').click(), 400);
+  }
+});
+
+// Mode toggle
+const modeRadios = document.querySelectorAll('input[name="opt-mode"]');
+const targetRow  = document.getElementById('target-select-row');
+const qtyRow     = document.getElementById('qty-row');
+const qtyHint    = document.getElementById('qty-row-hint');
+modeRadios.forEach(r => r.addEventListener('change', () => {
+  const isTarget = r.value === 'target';
+  targetRow.style.display = isTarget ? '' : 'none';
+  qtyHint.textContent = isTarget ? '(target output rate)' : '(parallel setups)';
+}));
+
+// Qty slider
+const qtySlider = document.getElementById('opt-qty');
+const qtyLabel  = document.getElementById('opt-qty-label');
+qtySlider.addEventListener('input', () => {
+  qtyLabel.textContent = qtySlider.value + ' / h';
+  if (_calcDone) {
+    clearTimeout(_recalcTimer);
+    _recalcTimer = setTimeout(() => document.getElementById('btn-opt-calc').click(), 400);
+  }
+});
+
+// ── Tier/role helpers ─────────────────────────────────────────────────────────
+const TIER_COLOR = {1:'secondary', 2:'info', 3:'primary', 4:'danger'};
+function tierBadge(t) {
+  return `<span class="badge bg-${TIER_COLOR[t]??'secondary'}">P${t}</span>`;
+}
+const ROLE = {
+  miner:        {label:'Miner (P0→P1)',    cls:'bg-primary',           icon:'fa-hammer'},
+  factory_p4:   {label:'P4 Factory',       cls:'bg-danger',            icon:'fa-industry'},
+  factory:      {label:'Factory Planet',   cls:'bg-warning text-dark', icon:'fa-cogs'},
+  factory_p2p3: {label:'Factory Planet',   cls:'bg-warning text-dark', icon:'fa-cogs'},
+  factory_p2:   {label:'Factory Planet',   cls:'bg-warning text-dark', icon:'fa-cogs'},
+};
+function roleBadge(role) {
+  const r = ROLE[role] ?? {label:role, cls:'bg-secondary', icon:'fa-question'};
+  return `<span class="badge ${r.cls}"><i class="fas ${r.icon} me-1"></i>${r.label}</span>`;
+}
+
+function jumpBadge(jumps) {
+  if (jumps === null || jumps === undefined) return '';
+  const cls = jumps === 0 ? 'bg-success' : jumps <= 3 ? 'bg-primary' : jumps <= 6 ? 'bg-warning text-dark' : 'bg-danger';
+  return `<span class="badge ${cls}" title="${jumps} jump${jumps!==1?'s':''} from home">${jumps}J</span>`;
+}
+
+function planetRow(a) {
+  const role = a.role;
+
+  // No planet slots left (type exists in range but all IC slots used)
+  if (a.no_slots) {
+    const what = a.p0 ? `<strong>${a.p0}</strong>` : (ROLE[role]?.label ?? role);
+    return `<tr class="table-danger">
+      <td>${roleBadge(role)}</td>
+      <td colspan="2" class="small">
+        <i class="fas fa-user-times text-danger me-1"></i>
+        ${what} — no free planet slots (all IC capacity used)
+      </td>
+      <td>—</td><td>—</td><td></td>
+    </tr>`;
+  }
+
+  // Truly missing: P0 type doesn't exist in this region at all
+  if (a.truly_missing) {
+    const types = (a.needed_types ?? []).map(t => `<span class="badge bg-light text-dark border">${t}</span>`).join(' ');
+    const what = a.p0 ? `<strong>${a.p0}</strong>` : (ROLE[role]?.label ?? role);
+    return `<tr class="table-danger">
+      <td>${roleBadge(role)}</td>
+      <td colspan="2" class="small">
+        <i class="fas fa-times-circle text-danger me-1"></i>
+        ${what} — no ${types || '?'} planet within range
+      </td>
+      <td>—</td><td>—</td><td></td>
+    </tr>`;
+  }
+
+  // New (uncolonized) slot needed
+  if (a.new_slot) {
+    const types = (a.needed_types ?? []).map(t => `<span class="badge bg-light text-dark border" style="font-size:.65rem">${t}</span>`).join(' ');
+    const ex = a.example_system ? `e.g. ${a.example_system} (${a.example_jumps}J)` : '';
+    const p0cell = role === 'miner'
+      ? `<span class="text-muted small">${a.p0 ?? ''} needed</span><br>${types}`
+      : `<span class="text-muted small">${types} planet</span>`;
+    const img = a.char_id
+      ? `<img src="https://images.evetech.net/characters/${a.char_id}/portrait?size=32"
+          class="rounded-circle me-1" width="22" height="22" alt="" style="vertical-align:middle">`
+      : '';
+    return `<tr class="table-warning">
+      <td>${roleBadge(role)}</td>
+      <td>${img}<strong class="small">${a.char ?? '—'}</strong></td>
+      <td class="small">
+        <span class="text-dark fw-semibold"><i class="fas fa-plus-circle me-1"></i>New ${a.type_display ?? ''} Planet</span>
+        ${ex ? `<br><span class="text-muted" style="font-size:.7rem">${ex}</span>` : ''}
+      </td>
+      <td>${a.example_jumps != null ? jumpBadge(a.example_jumps) : '—'}</td>
+      <td>${p0cell}</td>
+      <td class="text-muted small">${role === 'miner' ? `${(a.p0_rate_needed ?? 0).toLocaleString()} P0/h` : ''}</td>
+    </tr>`;
+  }
+
+  // Existing colonized planet
+  const p0cell = role === 'miner'
+    ? (a.known_p0
+        ? `<span class="badge bg-light text-dark border">${a.known_p0}</span>${a.rate ? ` <small class="text-muted">${a.rate.toLocaleString()}/h</small>` : ''}`
+        : `<span class="badge bg-warning text-dark">flexible</span>
+           <button class="btn btn-outline-warning btn-sm py-0 ms-1" style="font-size:.7rem"
+             data-action="open-p0" data-pk="${a.pk}" data-name="${(a.name ?? '').replace(/"/g,'&quot;')}" data-possible='${JSON.stringify(a.possible_p0 ?? [])}'>
+             Set P0</button>`)
+    : `<span class="text-muted small">${a.type_display}</span>`;
+  const img = `<img src="https://images.evetech.net/characters/${a.char_id}/portrait?size=32"
+    class="rounded-circle me-1" width="22" height="22" alt="" style="vertical-align:middle">`;
+  return `<tr>
+    <td>${roleBadge(role)}</td>
+    <td>${img}<strong class="small">${a.char}</strong></td>
+    <td class="small">${a.name}<br><span class="text-muted" style="font-size:.7rem">${a.system}</span></td>
+    <td>${jumpBadge(a.jumps)}</td>
+    <td>${p0cell}</td>
+    <td class="text-muted small">${role === 'miner' ? `${(a.p0_rate_needed ?? 0).toLocaleString()} P0/h` : ''}</td>
+  </tr>`;
+}
+
+// ── Main calculate ────────────────────────────────────────────────────────────
+document.getElementById('btn-opt-calc').addEventListener('click', async () => {
+  const mode    = document.querySelector('input[name="opt-mode"]:checked').value;
+  const target  = document.getElementById('opt-target-schematic').value.trim();
+  const sysIdV  = parseInt(sysId.value) || null;
+  const maxJ    = parseInt(jumpsSlider.value);
+  const taxRate = parseFloat(document.getElementById('opt-tax-rate').value) || 0;
+
+  if (mode === 'target' && !target) { alert('Please select a target product.'); return; }
+
+  const btn = document.getElementById('btn-opt-calc');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Calculating…';
+
+  const qtyPerHour = parseInt(qtySlider.value) || 1;
+  const payload = {mode, system_id: sysIdV, max_jumps: maxJ, tax_rate: taxRate, qty_per_hour: qtyPerHour, corp_mode: corpModeActive};
+  if (mode === 'target') payload.target = target;
+
+  let data;
+  try {
+    data = await fetchPostJson(ANALYZE_URL, payload);
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-calculator me-1"></i>Calculate Plan';
+    document.getElementById('opt-result').innerHTML = `<div class="alert alert-danger">Request failed: ${err}</div>`;
+    document.getElementById('opt-result').style.display = '';
+    return;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-calculator me-1"></i>Calculate Plan';
+
+  const el = document.getElementById('opt-result');
+  el.style.display = '';
+
+  if (!data.ok) { el.innerHTML = `<div class="alert alert-danger">Server error</div>`; return; }
+
+  _calcDone = true;
+  if (mode === 'target') renderTarget(data.result);
+  else renderISK(data.result);
+});
+
+// ── Target result ─────────────────────────────────────────────────────────────
+function renderTarget(r) {
+  const el = document.getElementById('opt-result');
+  if (r.error) { el.innerHTML = `<div class="alert alert-danger">${r.error}</div>`; return; }
+
+  const feasBadge = r.feasible
+    ? '<span class="badge bg-success fs-6"><i class="fas fa-check me-1"></i>Feasible</span>'
+    : '<span class="badge bg-danger fs-6"><i class="fas fa-times me-1"></i>Not fully feasible</span>';
+
+  const hasTax = r.tax_rate > 0 && r.tax_cost_per_day > 0;
+  const hasP0Cost = (r.p0_opportunity_cost_per_day || 0) > 0;
+  let iskStr;
+  if (r.isk_per_day > 0) {
+    const trueVal = (r.isk_per_day_true || r.isk_per_day_net || r.isk_per_day).toLocaleString();
+    let details = `${r.output_per_day}/day · ${r.price.toLocaleString()} ISK/unit`;
+    if (hasTax) details += ` · -${r.tax_cost_per_day.toLocaleString()} POCO`;
+    if (hasP0Cost) details += ` · -${r.p0_opportunity_cost_per_day.toLocaleString()} P0 cost`;
+    iskStr = `<strong class="text-success">${trueVal} ISK/day</strong>
+      <span class="text-muted small ms-1">(true profit · ${details})</span>`;
+  } else {
+    iskStr = '<span class="text-muted">No price data</span>';
+  }
+
+  let html = `<div class="card border-0 shadow-sm">
+    <div class="card-header py-2 d-flex align-items-center flex-wrap gap-2">
+      <strong>${r.target}</strong> ${tierBadge(r.tier)} ${feasBadge}
+      <span class="ms-auto">${iskStr}</span>`;
+
+  if (r.assigned_pks && r.assigned_pks.length) {
+    const assignments = [
+      ...(r.miner_assignments || []).filter(a => a.pk).map(a => ({pk: a.pk, role: a.role, p0: a.p0 || ''})),
+      ...(r.miner_assignments || []).filter(a => a.new_slot && !a.truly_missing && !a.no_slots).map(a => ({
+        new_slot: true, role: a.role, p0: a.p0 || '',
+        char_id: a.char_id, char: a.char, type: a.type, example_system: a.example_system,
+      })),
+      ...(r.factory_slots || []).filter(a => a.pk).map(a => ({pk: a.pk, role: a.role, p0: ''})),
+      ...(r.factory_slots || []).filter(a => a.new_slot && !a.truly_missing && !a.no_slots).map(a => ({
+        new_slot: true, role: a.role, p0: '',
+        char_id: a.char_id, char: a.char, type: a.type, example_system: a.example_system,
+      })),
+    ];
+    const aEnc = encodeURIComponent(JSON.stringify(assignments));
+    if (corpModeActive) {
+      html += `<button class="btn btn-sm btn-outline-warning"
+        data-action="open-create-project" data-target="${r.target}" data-enc="${aEnc}" data-corp="1">
+        <i class="fas fa-users me-1"></i>Create Corp Project
+      </button>`;
+    } else {
+      html += `<button class="btn btn-sm btn-outline-success"
+        data-action="open-create-project" data-target="${r.target}" data-enc="${aEnc}" data-corp="0">
+        <i class="fas fa-folder-plus me-1"></i>Create Project
+      </button>`;
+    }
+  }
+  html += `</div>`;
+
+  // Stats bar
+  const trueDay = r.isk_per_day_true || r.isk_per_day_net || r.isk_per_day;
+  const iskDayDisplay = r.isk_per_day > 0
+    ? `<span><i class="fas fa-coins me-1 text-muted"></i>
+        <strong class="text-success">${trueDay.toLocaleString()}</strong> ISK/day (true profit)
+        <span class="text-muted">· ${r.isk_per_day.toLocaleString()} gross${hasTax ? ' · -' + r.tax_cost_per_day.toLocaleString() + ' POCO' : ''}${hasP0Cost ? ' · -' + r.p0_opportunity_cost_per_day.toLocaleString() + ' P0' : ''}</span>
+       </span>`
+    : '';
+  html += `<div class="px-3 py-2 bg-light border-bottom d-flex flex-wrap gap-3 small">
+    <span><i class="fas fa-globe me-1 text-muted"></i>
+      <strong>${r.total_planets}</strong> planets
+      <span class="text-muted">(${r.total_miners} miner + ${r.factory_planets_needed} factory)</span>
+    </span>
+    <span><i class="fas fa-box me-1 text-muted"></i><strong>${r.output_per_day}</strong>/day</span>
+    ${iskDayDisplay}
+  </div>`;
+
+  html += `<div class="card-body p-0">`;
+
+  // Info bars
+  if (r.missing_p0 && r.missing_p0.length) {
+    html += `<div class="alert alert-danger rounded-0 py-2 mb-0 px-3 small">
+      <i class="fas fa-times-circle me-1"></i>
+      <strong>No suitable planets within range for:</strong> ${r.missing_p0.join(', ')}
+      — these planet types don't exist in this region.
+    </div>`;
+  }
+  if (r.new_slots_needed > 0) {
+    html += `<div class="alert alert-warning rounded-0 py-1 mb-0 px-3 small">
+      <i class="fas fa-plus-circle me-1"></i>
+      <strong>${r.new_slots_needed} new planet${r.new_slots_needed > 1 ? 's' : ''} need to be colonized.</strong>
+      Suggested system shown — any planet of that type within range works.
+    </div>`;
+  }
+  if (r.filtered_by_jumps && r.sde_avail) {
+    html += `<div class="alert alert-info rounded-0 py-1 mb-0 px-3 small">
+      <i class="fas fa-info-circle me-1"></i>
+      Planet types available within range: ${r.sde_avail.join(', ')}.
+    </div>`;
+  }
+
+  html += `<table class="table table-sm table-hover mb-0">
+    <thead class="table-dark">
+      <tr>
+        <th>Role</th><th>Character</th><th>Planet / System</th>
+        <th>Jumps</th><th>P0 / Type</th><th>Rate needed</th>
+      </tr>
+    </thead><tbody>`;
+
+  for (const a of r.miner_assignments) html += planetRow(a);
+  for (const s of r.factory_slots) html += planetRow(s);
+
+  html += `</tbody></table>`;
+
+  // AIF breakdown
+  if (r.aifs_breakdown && r.aifs_breakdown.length) {
+    html += `<div class="px-3 py-2 border-top">
+      <span class="text-muted small text-uppercase me-2">Factory AIFs:</span>`;
+    for (const f of r.aifs_breakdown) {
+      html += `<span class="badge bg-light text-dark border me-1">${tierBadge(f.tier)} ${f.count}× ${f.schematic}</span>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div></div>`;
+  el.innerHTML = html;
+}
+
+// ── ISK/h result ──────────────────────────────────────────────────────────────
+function renderISK(results) {
+  const el = document.getElementById('opt-result');
+  if (!results.length) { el.innerHTML = `<div class="alert alert-info">No schematics available for the given pool.</div>`; return; }
+
+  const taxRate = parseFloat(document.getElementById('opt-tax-rate').value) || 0;
+  const hasTax  = taxRate > 0;
+  const qty     = parseInt(qtySlider.value) || 1;
+  const qtyNote = qty > 1 ? ` <span class="badge bg-info text-dark">${qty}×/h</span>` : '';
+  const iskHdr  = `ISK/day <span class="text-warning small">(true profit)</span>`;
+
+  let html = `<div class="card border-0 shadow-sm">
+    <div class="card-header py-2">
+      <strong>All PI Products${qtyNote} — ranked by true ISK/day</strong>
+      <span class="text-muted small ms-2">(Jita buy · full P0 chain · minus POCO tax &amp; P0 opportunity cost${hasTax ? ` · ${taxRate}% POCO` : ''} · click Feasible to plan)</span>
+    </div>
+    <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Product</th><th>Tier</th>
+          <th class="text-end">${iskHdr}</th>
+          ${hasTax ? '<th class="text-end text-warning small">POCO tax/day</th>' : ''}
+          <th class="text-end">Price</th>
+          <th class="text-center">Planets</th>
+          <th>Status</th><th>Required P0</th>
+        </tr>
+      </thead><tbody>`;
+
+  for (const r of results) {
+    let feasBadge;
+    if (r.feasible) {
+      feasBadge = `<span class="badge bg-success cursor-pointer" data-action="switch-target" data-product="${r.product}">Feasible ▶</span>`;
+    } else if (!r.enough_slots) {
+      const tip = `Need ${r.planets_needed} planets (${r.miners_needed} miner + ${r.factory_planets_needed} factory)`;
+      feasBadge = `<span class="badge bg-warning text-dark" title="${tip}">Need slots</span>`;
+    } else if (r.factory_ok === false) {
+      feasBadge = `<span class="badge bg-secondary">No factory planet</span>`;
+    } else {
+      feasBadge = `<span class="badge bg-secondary">Not feasible</span>`;
+    }
+    const planetsTip = `${r.planets_needed} total: ${r.miners_needed} miner + ${r.factory_planets_needed} factory`;
+    const p0html = r.required_p0.map(p0 => {
+      const miss = r.missing_p0.includes(p0);
+      return `<span class="badge ${miss?'bg-danger':'bg-light text-dark border'}" style="font-size:.65rem">${p0}</span>`;
+    }).join(' ');
+    const iskDayVal = r.isk_per_day_true ?? r.isk_per_day_net ?? r.isk_per_day;
+    const iskDayShow = iskDayVal > 0 ? iskDayVal.toLocaleString() : '—';
+    const taxCell = hasTax
+      ? `<td class="text-end text-warning small">${r.tax_cost_per_day > 0 ? '-' + r.tax_cost_per_day.toLocaleString() : '—'}</td>`
+      : '';
+    html += `<tr class="${r.feasible?'':'text-muted'}">
+      <td class="fw-semibold">${r.product}</td>
+      <td>${tierBadge(r.tier)}</td>
+      <td class="text-end ${r.feasible?'text-success':''}">${iskDayShow}</td>
+      ${taxCell}
+      <td class="text-end">${r.price > 0 ? r.price.toLocaleString() : '—'}</td>
+      <td class="text-center">
+        <span class="badge bg-light text-dark border" title="${planetsTip}">${r.planets_needed}</span>
+      </td>
+      <td>${feasBadge}</td>
+      <td>${p0html}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table></div></div>`;
+  el.innerHTML = html;
+}
+
+function switchToTarget(product) {
+  const radio = document.getElementById('mode-target');
+  radio.checked = true;
+  radio.dispatchEvent(new Event('change'));
+  const sel = document.getElementById('opt-target-schematic');
+  sel.value = product;
+  document.getElementById('btn-opt-calc').click();
+}
+
+// ── Create project ────────────────────────────────────────────────────────────
+function openCreateProject(target, assignments, isCorp = false) {
+  document.getElementById('project-name-input').value = isCorp ? 'Corp ' + target : target + ' Plan';
+  document.getElementById('project-planet-pks').value = JSON.stringify(assignments);
+  document.getElementById('project-target-product').value = target;
+  document.getElementById('project-is-corp').value = isCorp ? '1' : '0';
+  document.getElementById('create-project-modal-title').innerHTML =
+    isCorp
+      ? '<i class="fas fa-users me-1"></i>Create Corp Project from Plan'
+      : '<i class="fas fa-folder-plus me-1"></i>Create Project from Plan';
+  document.getElementById('create-project-modal-desc').textContent =
+    isCorp
+      ? 'Creates a Corp Project from this plan. Assign participants on the Corp page.'
+      : 'Creates a project and assigns all planets in the plan to it. Assigned planets will be excluded from future optimizer runs.';
+  document.getElementById('btn-create-project-label').textContent =
+    isCorp ? 'Create Corp Project' : 'Create Project';
+  new bootstrap.Modal(document.getElementById('create-project-modal')).show();
+}
+
+document.getElementById('btn-create-project').addEventListener('click', async () => {
+  const name           = document.getElementById('project-name-input').value.trim();
+  const assignments    = JSON.parse(document.getElementById('project-planet-pks').value || '[]');
+  const target_product = document.getElementById('project-target-product').value;
+  const isCorp         = document.getElementById('project-is-corp').value === '1';
+  if (!name) { alert('Please enter a project name.'); return; }
+  const btn = document.getElementById('btn-create-project');
+  btn.disabled = true;
+  const url = isCorp ? CREATE_CORP_PRJ_URL : CREATE_PRJ_URL;
+  const data = await fetchPostJson(url, {name, assignments, target_product, target_qty_per_hour: parseInt(qtySlider.value) || 1});
+  btn.disabled = false;
+  if (data.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('create-project-modal')).hide();
+    window.location.href = isCorp ? CORP_PROJECTS_URL : PROJECTS_URL;
+  } else {
+    alert(data.error ?? 'Error creating project');
+  }
+});
+
+// ── P0 modal ──────────────────────────────────────────────────────────────────
+let _p0pk = null;
+function openP0Modal(pk, name, possible) {
+  _p0pk = pk;
+  document.getElementById('p0-modal-planet-name').textContent = name;
+  const sel = document.getElementById('p0-modal-select');
+  sel.innerHTML = '<option value="">— clear (use planet type) —</option>'
+    + possible.map(p => `<option value="${p}">${p}</option>`).join('');
+  new bootstrap.Modal(document.getElementById('p0-modal')).show();
+}
+
+document.getElementById('btn-p0-save').addEventListener('click', async () => {
+  if (!_p0pk) return;
+  const resource = document.getElementById('p0-modal-select').value;
+  try {
+    await fetchPostJson(SET_RES_URL.replace('{pk}', _p0pk), {resource});
+  } catch (err) {
+    alert(`Failed to save P0 resource: ${err}`);
+    return;
+  }
+  bootstrap.Modal.getInstance(document.getElementById('p0-modal')).hide();
+  document.getElementById('btn-opt-calc').click();
+});
+
+// Event delegation for dynamically-generated action buttons (no inline onclick)
+document.getElementById('opt-result').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  e.preventDefault();
+  const action = btn.dataset.action;
+  if (action === 'open-p0') {
+    openP0Modal(parseInt(btn.dataset.pk), btn.dataset.name, JSON.parse(btn.dataset.possible));
+  } else if (action === 'open-create-project') {
+    openCreateProject(btn.dataset.target, JSON.parse(decodeURIComponent(btn.dataset.enc)), btn.dataset.corp === '1');
+  } else if (action === 'switch-target') {
+    switchToTarget(btn.dataset.product);
+  }
+});
+}());
+</script>
+{% endblock %}

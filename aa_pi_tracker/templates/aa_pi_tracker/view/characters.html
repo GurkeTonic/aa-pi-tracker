@@ -1,0 +1,173 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n pi_filters evelinks static %}
+
+{% block page_title %}{% trans "PI Tracker — Characters" %}{% endblock %}
+{% block header_nav_brand %}{% trans "Planetary Interaction" %}{% endblock %}
+
+{% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
+
+{% block header_nav_collapse_right %}
+<li class="nav-item">
+  <a href="{% url 'aa_pi_tracker:add_character' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> {% trans "Add Character" %}</a>
+</li>
+<li class="nav-item ms-1">
+  <button class="btn btn-outline-secondary btn-sm" id="btn-sync"><i class="fas fa-sync"></i> {% trans "Sync All" %}</button>
+</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.skill-row { display:flex; align-items:center; gap:4px; font-size:.65rem; color:var(--bs-secondary-color,#6c757d); }
+.skill-label { min-width:28px; }
+.pips { display:inline-flex; gap:2px; }
+.pip { width:7px; height:7px; border-radius:50%; display:inline-block; }
+.pip-active  { background:#0d6efd; }
+.pip-trained { background:#ffc107; }
+.pip-empty   { background:rgba(128,128,128,.2); border:1px solid rgba(128,128,128,.25); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "framework/header/page-header.html" with title="Characters" %}
+<div class="container-fluid mt-3">
+  <div class="row g-3 mb-3">
+    {% for info in owners_info %}
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body py-3 px-3">
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <img src="{{ info.owner.character.character_id|character_portrait_url:64 }}"
+                 class="rounded flex-shrink-0" width="48" height="48" alt="">
+            <div class="flex-grow-1 min-width-0">
+              <div class="fw-bold text-truncate">{{ info.owner.character.character_name }}</div>
+              <div class="text-muted small">
+                {% if info.max_planets %}
+                  <span class="{% if info.planet_count >= info.max_planets %}text-warning{% endif %}">
+                    {{ info.planet_count }}/{{ info.max_planets }} planet{{ info.max_planets|pluralize }}
+                  </span>
+                {% else %}
+                  {{ info.planet_count }} planet{{ info.planet_count|pluralize }}
+                {% endif %}
+              </div>
+              <div class="text-muted pi-text-sm">
+                {% if info.last_sync %}
+                <i class="fas fa-check-circle text-success me-1"></i>{{ info.last_sync|date:"d M H:i" }} UTC
+                {% else %}
+                <i class="fas fa-clock text-warning me-1"></i>{% trans "Never synced" %}
+                {% endif %}
+              </div>
+            </div>
+            <button class="btn btn-sm {% if info.owner.shared_with_corp %}btn-success{% else %}btn-outline-secondary{% endif %} btn-share-char flex-shrink-0"
+                    data-pk="{{ info.owner.pk }}"
+                    title="{% if info.owner.shared_with_corp %}Shared with Corp — click to unshare{% else %}Share with Corp{% endif %}">
+              <i class="fas fa-share-alt"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger btn-remove-char flex-shrink-0"
+                    data-pk="{{ info.owner.pk }}"><i class="fas fa-trash"></i></button>
+          </div>
+
+          {% if info.ic_level is not None %}
+          <div class="border-top pt-2 mt-1 d-flex flex-column gap-1">
+            <div class="skill-row" title="Interplanetary Consolidation — max planets: {{ info.max_planets }}">
+              <span class="skill-label">IC</span>
+              <span class="pips">
+                {% for state in info.ic_level|skill_pips_detailed:info.ic_trained %}
+                <span class="pip pip-{{ state }}"></span>
+                {% endfor %}
+              </span>
+              <span class="ms-1">Lv{{ info.ic_level }}{% if info.ic_trained and info.ic_trained != info.ic_level %}/{{ info.ic_trained }}{% endif %}</span>
+            </div>
+            <div class="skill-row" title="Command Center Upgrades — max CC upgrade level: {{ info.ccu_level }}">
+              <span class="skill-label">CCU</span>
+              <span class="pips">
+                {% for state in info.ccu_level|skill_pips_detailed:info.ccu_trained %}
+                <span class="pip pip-{{ state }}"></span>
+                {% endfor %}
+              </span>
+              <span class="ms-1">Lv{{ info.ccu_level }}{% if info.ccu_trained and info.ccu_trained != info.ccu_level %}/{{ info.ccu_trained }}{% endif %}</span>
+            </div>
+            {% if info.planetology is not None %}
+            <div class="skill-row" title="Planetology — survey accuracy">
+              <span class="skill-label">PLN</span>
+              <span class="pips">
+                {% for state in info.planetology|skill_pips_detailed:info.planetology_trained %}
+                <span class="pip pip-{{ state }}"></span>
+                {% endfor %}
+              </span>
+              <span class="ms-1">Lv{{ info.planetology }}{% if info.planetology_trained and info.planetology_trained != info.planetology %}/{{ info.planetology_trained }}{% endif %}</span>
+            </div>
+            <div class="skill-row" title="Advanced Planetology — enhanced survey accuracy">
+              <span class="skill-label">APL</span>
+              <span class="pips">
+                {% for state in info.advanced_planetology|skill_pips_detailed:info.advanced_planetology_trained %}
+                <span class="pip pip-{{ state }}"></span>
+                {% endfor %}
+              </span>
+              <span class="ms-1">Lv{{ info.advanced_planetology }}{% if info.advanced_planetology_trained and info.advanced_planetology_trained != info.advanced_planetology %}/{{ info.advanced_planetology_trained }}{% endif %}</span>
+            </div>
+            <div class="skill-row" title="Remote Sensing — scan range">
+              <span class="skill-label">RS</span>
+              <span class="pips">
+                {% for state in info.remote_sensing|skill_pips_detailed:info.remote_sensing_trained %}
+                <span class="pip pip-{{ state }}"></span>
+                {% endfor %}
+              </span>
+              <span class="ms-1">Lv{{ info.remote_sensing }}{% if info.remote_sensing_trained and info.remote_sensing_trained != info.remote_sensing %}/{{ info.remote_sensing_trained }}{% endif %}</span>
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="border-top pt-2 mt-1">
+            <span class="text-warning small"><i class="fas fa-exclamation-triangle me-1"></i>{% trans "Skills not synced" %}</span>
+            <a href="{% url 'aa_pi_tracker:add_character' %}"
+               class="btn btn-outline-warning btn-sm py-0 px-1 ms-2 pi-text-sm"
+               title="{% trans 'Re-auth to load skills' %}">
+              <i class="fas fa-redo me-1"></i>{% trans "Re-Auth" %}
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>{% trans "No characters registered." %}
+        {% blocktrans %}Click <strong>Add Character</strong> to authorise ESI access.{% endblocktrans %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'aa_pi_tracker/js/pi_tracker.js' %}"></script>
+<script>
+(function () {
+  "use strict";
+  document.querySelectorAll(".btn-share-char").forEach(btn => btn.addEventListener("click", function () {
+    const pk = this.dataset.pk;
+    const btn = this;
+    fetchPost("{% url 'aa_pi_tracker:toggle_share_character' %}", {owner_pk: pk}).then(data => {
+      if (data.ok) {
+        btn.classList.toggle("btn-success", data.shared);
+        btn.classList.toggle("btn-outline-secondary", !data.shared);
+        btn.title = data.shared ? "Shared with Corp — click to unshare" : "Share with Corp";
+      }
+    }).catch(() => {});
+  }));
+  document.querySelectorAll(".btn-remove-char").forEach(btn => btn.addEventListener("click", function () {
+    if (!confirm("Remove this character?")) return;
+    fetchPost("{% url 'aa_pi_tracker:remove_character' %}", {owner_pk: this.dataset.pk}).then(() => location.reload());
+  }));
+  document.getElementById("btn-sync")?.addEventListener("click", function () {
+    this.disabled = true; this.innerHTML = '<i class="fas fa-sync fa-spin"></i> Syncing…';
+    fetchPost("{% url 'aa_pi_tracker:trigger_sync' %}", {}).then(() => {
+      this.innerHTML = '<i class="fas fa-check"></i> Queued';
+      setTimeout(() => {this.disabled = false; this.innerHTML = '<i class="fas fa-sync"></i> Sync All';}, 5000);
+    }).catch(() => { this.disabled = false; this.innerHTML = '<i class="fas fa-sync"></i> Sync All'; });
+  });
+}());
+</script>
+{% endblock %}

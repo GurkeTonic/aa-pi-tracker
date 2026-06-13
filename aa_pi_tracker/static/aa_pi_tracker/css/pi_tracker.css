@@ -1,0 +1,20 @@
+/* PI Tracker — shared styles */
+
+.type-temperate { color: #198754; }
+.type-barren    { color: #adb5bd; }
+.type-oceanic   { color: #0d6efd; }
+.type-ice       { color: #0dcaf0; }
+.type-gas       { color: #6ea8fe; }
+.type-lava      { color: #dc3545; }
+.type-storm     { color: #ffc107; }
+.type-plasma    { color: #fd7e14; }
+
+.cursor-pointer { cursor: pointer; }
+
+/* Utility font-size classes — replace inline style="font-size:..." */
+.pi-text-tiny { font-size: .58rem; }
+.pi-text-xxs  { font-size: .55rem; }
+.pi-text-xs   { font-size: .6rem; }
+.pi-text-sm   { font-size: .65rem; }
+.pi-text-md   { font-size: .68rem; }
+.pi-text-nav  { font-size: .7rem; }
