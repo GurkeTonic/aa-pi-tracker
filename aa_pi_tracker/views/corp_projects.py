@@ -124,7 +124,10 @@ def corp_project_set_participants(request, pk):
 def corp_project_add_objective(request, pk):
     project = get_object_or_404(PiProject, pk=pk, user=request.user, is_corp_project=True)
     schematic_name = request.POST.get("schematic_name", "")
-    target = max(1, min(50, int(request.POST.get("target_qty_per_hour", 1))))
+    try:
+        target = max(1, min(50, int(request.POST.get("target_qty_per_hour", 1))))
+    except (ValueError, TypeError):
+        return JsonResponse({"ok": False, "error": "Invalid quantity."}, status=400)
     if schematic_name not in SCHEMATICS:
         return JsonResponse({"ok": False, "error": "Unknown schematic."}, status=400)
     obj, _ = PiProjectObjective.objects.update_or_create(

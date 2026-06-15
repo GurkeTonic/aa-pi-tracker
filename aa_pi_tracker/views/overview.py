@@ -22,12 +22,16 @@ def index(request):
     ]
     extractors = compute_extractors(owners, prices, now)
 
-    total_storage_isk = sum(
-        item.amount * prices.get(item.type_name, 0)
-        for owner in owners
-        for planet in owner.planets.all()
-        for item in planet.storage_items.all()
-    )
+    total_storage_isk = 0
+    factory_isk_h = 0
+    for owner in owners:
+        for planet in owner.planets.all():
+            for item in planet.storage_items.all():
+                total_storage_isk += item.amount * prices.get(item.type_name, 0)
+            for fac in planet.factories.all():
+                if fac.schematic_name and fac.schematic_name in SCHEMATICS:
+                    factory_isk_h += output_per_hour(fac.schematic_name) * prices.get(fac.schematic_name, 0)
+
     summary = {
         "expired":          sum(1 for e in extractors if e["urgency"] == "expired"),
         "critical":         sum(1 for e in extractors if e["urgency"] == "critical"),
@@ -50,14 +54,6 @@ def index(request):
         [{"product": k, "qty_h": v["qty_h"], "isk_h": v["isk_h"], "char_count": len(v["chars"])}
          for k, v in snapshot.items()],
         key=lambda x: -x["isk_h"],
-    )
-
-    factory_isk_h = sum(
-        output_per_hour(fac.schematic_name) * prices.get(fac.schematic_name, 0)
-        for owner in owners
-        for planet in owner.planets.all()
-        for fac in planet.factories.all()
-        if fac.schematic_name and fac.schematic_name in SCHEMATICS
     )
 
     last_synced = max((o.last_synced for o in owners if o.last_synced), default=None)

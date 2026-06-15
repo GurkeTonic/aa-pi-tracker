@@ -39,7 +39,9 @@ def _build_maintenance_overview(project, now, user_filter=None):
                     chars[key]["expired_count"] += 1
                 elif urgency == "critical":
                     chars[key]["critical_count"] += 1
-            if planet.storage_items.exists():
+            # Use the prefetched storage_items (truthy check on the cached list);
+            # .exists() would ignore the prefetch and fire one query per planet.
+            if planet.storage_items.all():
                 chars[key]["pickup_count"] += 1
         elif pp.role in (PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4):
             chars[key]["delivery_count"] += 1
@@ -221,7 +223,13 @@ def maintenance_char_page(request, pk, char_pk):
 def maintenance_save_state(request, pk, char_pk):
     project = get_project_or_404(request, pk)
     if project.is_corp_project:
-        if project.user != request.user:
+        if project.user == request.user:
+            # Manager: only participants' chars allowed (mirror of the GET guard;
+            # otherwise a manager could create an orphan log for any character_id).
+            if not project.participants.filter(character__character_id=char_pk).exists():
+                return JsonResponse({"error": "forbidden"}, status=403)
+        else:
+            # Participant: only own chars
             if not PiOwner.objects.filter(user=request.user, character__character_id=char_pk).exists():
                 return JsonResponse({"error": "forbidden"}, status=403)
     try:

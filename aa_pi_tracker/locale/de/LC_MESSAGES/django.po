@@ -1,0 +1,1477 @@
+# German translation for aa-pi-tracker.
+# Copyright (C) 2026 GurkeTonic
+# This file is distributed under the same license as the aa-pi-tracker package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: aa-pi-tracker\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-13 21:55+0000\n"
+"PO-Revision-Date: 2026-06-13 20:10+0000\n"
+"Last-Translator: GurkeTonic\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: auth_hooks.py:12
+msgid "PI Tracker"
+msgstr "PI Tracker"
+
+#: templates/aa_pi_tracker/view/buildout.html:4
+#, python-format
+msgid "Build-Out — %(name)s"
+msgstr "Ausbau — %(name)s"
+
+#: templates/aa_pi_tracker/view/buildout.html:5
+#: templates/aa_pi_tracker/view/characters.html:5
+#: templates/aa_pi_tracker/view/corp_projects.html:5
+#: templates/aa_pi_tracker/view/corp_projects_member.html:5
+#: templates/aa_pi_tracker/view/extractors.html:5
+#: templates/aa_pi_tracker/view/maintenance.html:5
+#: templates/aa_pi_tracker/view/maintenance_char.html:5
+#: templates/aa_pi_tracker/view/optimizer.html:5
+#: templates/aa_pi_tracker/view/overview.html:5
+#: templates/aa_pi_tracker/view/planets.html:5
+#: templates/aa_pi_tracker/view/profit.html:5
+#: templates/aa_pi_tracker/view/projects.html:5
+msgid "Planetary Interaction"
+msgstr "Planetare Interaktion"
+
+#: templates/aa_pi_tracker/view/buildout.html:31
+#: templates/aa_pi_tracker/view/maintenance.html:38
+#: templates/aa_pi_tracker/view/maintenance_char.html:64
+#: templates/aa_pi_tracker/view/maintenance_char.html:235
+#: templates/aa_pi_tracker/view/maintenance_char.html:307
+msgid "Back"
+msgstr "Zurück"
+
+#: templates/aa_pi_tracker/view/buildout.html:34
+msgid "Build-Out Blueprint"
+msgstr "Ausbau-Blueprint"
+
+#: templates/aa_pi_tracker/view/buildout.html:35
+#, python-format
+msgid "%(planets)s planet across %(pilots)s pilots"
+msgid_plural "%(planets)s planets across %(pilots)s pilots"
+msgstr[0] "%(planets)s Planet über %(pilots)s Piloten"
+msgstr[1] "%(planets)s Planeten über %(pilots)s Piloten"
+
+#: templates/aa_pi_tracker/view/buildout.html:42
+msgid "No planets assigned to this project yet."
+msgstr "Diesem Projekt sind noch keine Planeten zugewiesen."
+
+#: templates/aa_pi_tracker/view/buildout.html:43
+msgid "Add planets in the Plan tab."
+msgstr "Planeten im Plan-Tab hinzufügen."
+
+#: templates/aa_pi_tracker/view/buildout.html:92
+#: templates/aa_pi_tracker/view/projects.html:611
+msgid "Miner"
+msgstr "Miner"
+
+#: templates/aa_pi_tracker/view/buildout.html:93
+#: templates/aa_pi_tracker/view/optimizer.html:431
+msgid "P4 Factory"
+msgstr "P4-Fabrik"
+
+#: templates/aa_pi_tracker/view/buildout.html:94
+#: templates/aa_pi_tracker/view/maintenance_char.html:271
+#: templates/aa_pi_tracker/view/projects.html:612
+msgid "Factory"
+msgstr "Fabrik"
+
+#: templates/aa_pi_tracker/view/buildout.html:104
+msgid "Extracts:"
+msgstr "Fördert:"
+
+#: templates/aa_pi_tracker/view/buildout.html:110
+msgid "Produces:"
+msgstr "Produziert:"
+
+#: templates/aa_pi_tracker/view/buildout.html:118
+msgid "P1 Inputs:"
+msgstr "P1-Inputs:"
+
+#: templates/aa_pi_tracker/view/buildout.html:156
+msgid "Layout"
+msgstr "Layout"
+
+#: templates/aa_pi_tracker/view/buildout.html:160
+msgid "Extractor 1 (8 heads)"
+msgstr "Extraktor 1 (8 Köpfe)"
+
+#: templates/aa_pi_tracker/view/buildout.html:166
+msgid "High-Tech Plant"
+msgstr "High-Tech-Anlage"
+
+#: templates/aa_pi_tracker/view/buildout.html:171
+msgid "Launchpad 1"
+msgstr "Launchpad 1"
+
+#: templates/aa_pi_tracker/view/buildout.html:176
+msgid "To Colonize"
+msgstr "Zu kolonisieren"
+
+#: templates/aa_pi_tracker/view/characters.html:4
+msgid "PI Tracker — Characters"
+msgstr "PI Tracker — Charaktere"
+
+#: templates/aa_pi_tracker/view/characters.html:11
+#: templates/aa_pi_tracker/view/extractors.html:11
+#: templates/aa_pi_tracker/view/optimizer.html:11
+#: templates/aa_pi_tracker/view/overview.html:11
+#: templates/aa_pi_tracker/view/planets.html:11
+#: templates/aa_pi_tracker/view/projects.html:10
+msgid "Add Character"
+msgstr "Charakter hinzufügen"
+
+#: templates/aa_pi_tracker/view/characters.html:14
+#: templates/aa_pi_tracker/view/characters.html:167
+#: templates/aa_pi_tracker/view/characters.html:168
+msgid "Sync All"
+msgstr "Alle synchronisieren"
+
+#: templates/aa_pi_tracker/view/characters.html:55
+msgid "Never synced"
+msgstr "Nie synchronisiert"
+
+#: templates/aa_pi_tracker/view/characters.html:120
+msgid "Skills not synced"
+msgstr "Skills nicht synchronisiert"
+
+#: templates/aa_pi_tracker/view/characters.html:123
+msgid "Re-auth to load skills"
+msgstr "Neu autorisieren, um Skills zu laden"
+
+#: templates/aa_pi_tracker/view/characters.html:124
+msgid "Re-Auth"
+msgstr "Neu autorisieren"
+
+#: templates/aa_pi_tracker/view/characters.html:134
+#: templates/aa_pi_tracker/view/overview.html:23
+msgid "No characters registered."
+msgstr "Keine Charaktere registriert."
+
+#: templates/aa_pi_tracker/view/characters.html:135
+msgid "Click <strong>Add Character</strong> to authorise ESI access."
+msgstr "Klicke auf <strong>Charakter hinzufügen</strong>, um ESI-Zugriff zu autorisieren."
+
+#: templates/aa_pi_tracker/view/characters.html:155
+msgid "Shared with Corp — click to unshare"
+msgstr "Mit Corp geteilt — klicken zum Aufheben"
+
+#: templates/aa_pi_tracker/view/characters.html:155
+msgid "Share with Corp"
+msgstr "Mit Corp teilen"
+
+#: templates/aa_pi_tracker/view/characters.html:160
+msgid "Remove this character?"
+msgstr "Diesen Charakter entfernen?"
+
+#: templates/aa_pi_tracker/view/characters.html:164
+#: templates/aa_pi_tracker/view/planets.html:114
+msgid "Syncing…"
+msgstr "Synchronisiere…"
+
+#: templates/aa_pi_tracker/view/characters.html:166
+#: templates/aa_pi_tracker/view/extractors.html:81
+#: templates/aa_pi_tracker/view/overview.html:227
+#: templates/aa_pi_tracker/view/planets.html:116
+#: templates/aa_pi_tracker/view/profit.html:312
+#: templates/aa_pi_tracker/view/profit.html:329
+msgid "Queued"
+msgstr "Eingereiht"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:4
+#: templates/aa_pi_tracker/view/corp_projects_member.html:4
+msgid "PI Tracker — Corp Projects"
+msgstr "PI Tracker — Corp-Projekte"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:12
+#: templates/aa_pi_tracker/view/corp_projects.html:153
+msgid "New Corp Project"
+msgstr "Neues Corp-Projekt"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:25
+msgid "Corp PI Manager"
+msgstr "Corp-PI-Manager"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:34
+msgid "Shared Characters"
+msgstr "Geteilte Charaktere"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:54
+msgid "No characters shared yet. Members share their characters via the <strong>Characters</strong> page."
+msgstr "Noch keine Charaktere geteilt. Mitglieder teilen ihre Charaktere über die <strong>Charaktere</strong>-Seite."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:74
+msgid "Manage Members"
+msgstr "Mitglieder verwalten"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:78
+#: templates/aa_pi_tracker/view/corp_projects_member.html:54
+msgid "Build-Out"
+msgstr "Ausbau"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:82
+#: templates/aa_pi_tracker/view/corp_projects_member.html:58
+msgid "Maintenance"
+msgstr "Wartung"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:95
+#: templates/aa_pi_tracker/view/corp_projects_member.html:27
+msgid "Objectives"
+msgstr "Ziele"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:99
+#: templates/aa_pi_tracker/view/corp_projects.html:193
+msgid "Add Objective"
+msgstr "Ziel hinzufügen"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:114
+msgid "No objectives yet."
+msgstr "Noch keine Ziele."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:120
+msgid "Participants"
+msgstr "Teilnehmer"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:132
+msgid "No participants assigned."
+msgstr "Keine Teilnehmer zugewiesen."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:141
+msgid "No Corp Projects yet. Click <strong>New Corp Project</strong> to create one."
+msgstr "Noch keine Corp-Projekte. Klicke auf <strong>Neues Corp-Projekt</strong>, um eines zu erstellen."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:157
+#: templates/aa_pi_tracker/view/optimizer.html:244
+msgid "Project Name"
+msgstr "Projektname"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:158
+msgid "e.g. P4 Broadcast Nodes"
+msgstr "z. B. P4 Broadcast Nodes"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:161
+#: templates/aa_pi_tracker/view/corp_projects.html:181
+#: templates/aa_pi_tracker/view/corp_projects.html:215
+#: templates/aa_pi_tracker/view/optimizer.html:251
+#: templates/aa_pi_tracker/view/optimizer.html:273
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:162
+msgid "Create"
+msgstr "Erstellen"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:173
+msgid "Manage Participants"
+msgstr "Teilnehmer verwalten"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:177
+msgid "Select which shared characters participate in this project."
+msgstr "Wähle, welche geteilten Charaktere an diesem Projekt teilnehmen."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:182
+#: templates/aa_pi_tracker/view/optimizer.html:274
+msgid "Save"
+msgstr "Speichern"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:198
+#: templates/aa_pi_tracker/view/extractors.html:27
+#: templates/aa_pi_tracker/view/optimizer.html:708
+#: templates/aa_pi_tracker/view/planets.html:161
+#: templates/aa_pi_tracker/view/planets.html:185
+msgid "Product"
+msgstr "Produkt"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:210
+#: templates/aa_pi_tracker/view/projects.html:705
+#: templates/aa_pi_tracker/view/projects.html:736
+msgid "Target Qty/h"
+msgstr "Zielmenge/h"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:216
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:249
+msgid "Project name required."
+msgstr "Projektname erforderlich."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:253
+msgid "Error creating project."
+msgstr "Fehler beim Erstellen des Projekts."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:254
+#: templates/aa_pi_tracker/view/corp_projects.html:316
+#: templates/aa_pi_tracker/view/corp_projects.html:335
+msgid "Network error."
+msgstr "Netzwerkfehler."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:260
+msgid "Delete this corp project?"
+msgstr "Dieses Corp-Projekt löschen?"
+
+#: templates/aa_pi_tracker/view/corp_projects.html:265
+#: templates/aa_pi_tracker/view/corp_projects.html:276
+msgid "Error."
+msgstr "Fehler."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:315
+msgid "Error saving participants."
+msgstr "Fehler beim Speichern der Teilnehmer."
+
+#: templates/aa_pi_tracker/view/corp_projects.html:334
+msgid "Error adding objective."
+msgstr "Fehler beim Hinzufügen des Ziels."
+
+#: templates/aa_pi_tracker/view/corp_projects_member.html:39
+msgid "Your Characters in this Project"
+msgstr "Deine Charaktere in diesem Projekt"
+
+#: templates/aa_pi_tracker/view/corp_projects_member.html:70
+#, python-format
+msgid "You are not participating in any Corp Projects yet. Share your characters on the <a href=\"%(chars_url)s\">Characters</a> page so a Corp Manager can add you to a project."
+msgstr "Du nimmst noch an keinem Corp-Projekt teil. Teile deine Charaktere auf der <a href=\"%(chars_url)s\">Charaktere</a>-Seite, damit ein Corp-Manager dich einem Projekt hinzufügen kann."
+
+#: templates/aa_pi_tracker/view/extractors.html:4
+msgid "PI Tracker — Extractors"
+msgstr "PI Tracker — Extraktoren"
+
+#: templates/aa_pi_tracker/view/extractors.html:14
+#: templates/aa_pi_tracker/view/extractors.html:83
+#: templates/aa_pi_tracker/view/extractors.html:84
+#: templates/aa_pi_tracker/view/overview.html:14
+#: templates/aa_pi_tracker/view/overview.html:229
+#: templates/aa_pi_tracker/view/overview.html:230
+#: templates/aa_pi_tracker/view/planets.html:14
+#: templates/aa_pi_tracker/view/planets.html:117
+msgid "Sync"
+msgstr "Synchronisieren"
+
+#: templates/aa_pi_tracker/view/extractors.html:26
+#: templates/aa_pi_tracker/view/optimizer.html:664
+#: templates/aa_pi_tracker/view/planets.html:26
+#: templates/aa_pi_tracker/view/projects.html:590
+msgid "Character"
+msgstr "Charakter"
+
+#: templates/aa_pi_tracker/view/extractors.html:26
+#: templates/aa_pi_tracker/view/planets.html:26
+msgid "Region"
+msgstr "Region"
+
+#: templates/aa_pi_tracker/view/extractors.html:26
+#: templates/aa_pi_tracker/view/planets.html:26
+#: templates/aa_pi_tracker/view/projects.html:592
+msgid "System"
+msgstr "System"
+
+#: templates/aa_pi_tracker/view/extractors.html:26
+#: templates/aa_pi_tracker/view/optimizer.html:483
+#: templates/aa_pi_tracker/view/optimizer.html:492
+#: templates/aa_pi_tracker/view/planets.html:26
+#: templates/aa_pi_tracker/view/projects.html:591
+#: templates/aa_pi_tracker/view/projects.html:762
+msgid "Planet"
+msgstr "Planet"
+
+#: templates/aa_pi_tracker/view/extractors.html:26
+#: templates/aa_pi_tracker/view/planets.html:26
+msgid "Type"
+msgstr "Typ"
+
+#: templates/aa_pi_tracker/view/extractors.html:27
+msgid "Heads"
+msgstr "Köpfe"
+
+#: templates/aa_pi_tracker/view/extractors.html:27
+msgid "Progress"
+msgstr "Fortschritt"
+
+#: templates/aa_pi_tracker/view/extractors.html:27
+msgid "Time Left"
+msgstr "Restzeit"
+
+#: templates/aa_pi_tracker/view/extractors.html:28
+#: templates/aa_pi_tracker/view/overview.html:85
+msgid "Qty / h"
+msgstr "Menge / h"
+
+#: templates/aa_pi_tracker/view/extractors.html:28
+#: templates/aa_pi_tracker/view/overview.html:85
+#: templates/aa_pi_tracker/view/planets.html:28
+msgid "ISK / h"
+msgstr "ISK / h"
+
+#: templates/aa_pi_tracker/view/extractors.html:28
+#: templates/aa_pi_tracker/view/profit.html:72
+msgid "Cycle"
+msgstr "Zyklus"
+
+#: templates/aa_pi_tracker/view/extractors.html:54
+msgid "No active extractors found."
+msgstr "Keine aktiven Extraktoren gefunden."
+
+#: templates/aa_pi_tracker/view/extractors.html:79
+#: templates/aa_pi_tracker/view/overview.html:225
+msgid "Queuing…"
+msgstr "Wird eingereiht…"
+
+#: templates/aa_pi_tracker/view/extractors.html:82
+#: templates/aa_pi_tracker/view/overview.html:228
+msgid "ESI sync queued — data updates within ~10 minutes"
+msgstr "ESI-Sync eingereiht — Daten aktualisieren sich in ~10 Minuten"
+
+#: templates/aa_pi_tracker/view/maintenance.html:4
+#: templates/aa_pi_tracker/view/maintenance_char.html:4
+#, python-format
+msgid "Maintenance — %(name)s"
+msgstr "Wartung — %(name)s"
+
+#: templates/aa_pi_tracker/view/maintenance.html:41
+msgid "Maintenance Operations"
+msgstr "Wartungsarbeiten"
+
+#: templates/aa_pi_tracker/view/maintenance.html:52
+#, python-format
+msgid "%(n)s expired extractor"
+msgid_plural "%(n)s expired extractors"
+msgstr[0] "%(n)s abgelaufener Extraktor"
+msgstr[1] "%(n)s abgelaufene Extraktoren"
+
+#: templates/aa_pi_tracker/view/maintenance.html:53
+#: templates/aa_pi_tracker/view/maintenance.html:114
+msgid "critical"
+msgstr "kritisch"
+
+#: templates/aa_pi_tracker/view/maintenance.html:54
+msgid "reset now!"
+msgstr "jetzt zurücksetzen!"
+
+#: templates/aa_pi_tracker/view/maintenance.html:56
+#, python-format
+msgid "%(n)s critical extractor"
+msgid_plural "%(n)s critical extractors"
+msgstr[0] "%(n)s kritischer Extraktor"
+msgstr[1] "%(n)s kritische Extraktoren"
+
+#: templates/aa_pi_tracker/view/maintenance.html:56
+msgid "reset within 4h"
+msgstr "innerhalb von 4 h zurücksetzen"
+
+#: templates/aa_pi_tracker/view/maintenance.html:66
+msgid "Pilots"
+msgstr "Piloten"
+
+#: templates/aa_pi_tracker/view/maintenance.html:74
+msgid "done"
+msgstr "erledigt"
+
+#: templates/aa_pi_tracker/view/maintenance.html:82
+msgid "No colonized planets found. Sync ESI data first or assign planets to this project."
+msgstr "Keine kolonisierten Planeten gefunden. Erst ESI-Daten synchronisieren oder dem Projekt Planeten zuweisen."
+
+#: templates/aa_pi_tracker/view/maintenance.html:109
+msgid "expired"
+msgstr "abgelaufen"
+
+#: templates/aa_pi_tracker/view/maintenance.html:119
+msgid "Extractors OK"
+msgstr "Extraktoren OK"
+
+#: templates/aa_pi_tracker/view/maintenance.html:124
+#, python-format
+msgid "%(n)s pickup"
+msgid_plural "%(n)s pickups"
+msgstr[0] "%(n)s Abholung"
+msgstr[1] "%(n)s Abholungen"
+
+#: templates/aa_pi_tracker/view/maintenance.html:129
+#, python-format
+msgid "%(n)s delivery"
+msgid_plural "%(n)s deliveries"
+msgstr[0] "%(n)s Lieferung"
+msgstr[1] "%(n)s Lieferungen"
+
+#: templates/aa_pi_tracker/view/maintenance.html:136
+msgid "Steps"
+msgstr "Schritte"
+
+#: templates/aa_pi_tracker/view/maintenance.html:137
+#: templates/aa_pi_tracker/view/maintenance_char.html:83
+msgid "Reset Extractors"
+msgstr "Extraktoren zurücksetzen"
+
+#: templates/aa_pi_tracker/view/maintenance.html:138
+#: templates/aa_pi_tracker/view/maintenance_char.html:89
+msgid "Pickup P1"
+msgstr "P1 abholen"
+
+#: templates/aa_pi_tracker/view/maintenance.html:139
+#: templates/aa_pi_tracker/view/maintenance_char.html:95
+msgid "Load Factories"
+msgstr "Fabriken befüllen"
+
+#: templates/aa_pi_tracker/view/maintenance.html:141
+msgid "Done ✓"
+msgstr "Fertig ✓"
+
+#: templates/aa_pi_tracker/view/maintenance.html:141
+#, python-format
+msgid "Step %(step)s →"
+msgstr "Schritt %(step)s →"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:84
+msgid "Check & restart extractors"
+msgstr "Extraktoren prüfen & neu starten"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:90
+msgid "Collect from launchpads"
+msgstr "Von Launchpads einsammeln"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:96
+msgid "Deliver P1 to factories"
+msgstr "P1 an Fabriken liefern"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:104
+msgid "No miner planets with extractors assigned to this character."
+msgstr "Diesem Charakter sind keine Miner-Planeten mit Extraktoren zugewiesen."
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:107
+msgid "Extractor Planets"
+msgstr "Extraktor-Planeten"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:147
+msgid "No extractor data — sync ESI first."
+msgstr "Keine Extraktor-Daten — erst ESI synchronisieren."
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:157
+#: templates/aa_pi_tracker/view/maintenance_char.html:239
+msgid "Skip"
+msgstr "Überspringen"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:160
+msgid "Next: Pickup P1"
+msgstr "Weiter: P1 abholen"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:168
+msgid "No miner planets found for this character."
+msgstr "Keine Miner-Planeten für diesen Charakter gefunden."
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:171
+msgid "Pickup Locations"
+msgstr "Abhol-Orte"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:199
+#, python-format
+msgid "%(qty)s in storage"
+msgstr "%(qty)s im Lager"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:208
+msgid "No storage data — sync ESI first."
+msgstr "Keine Lager-Daten — erst ESI synchronisieren."
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:217
+msgid "Deliver to:"
+msgstr "Liefern an:"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:221
+#: templates/aa_pi_tracker/view/maintenance_char.html:291
+msgid "cross-char"
+msgstr "Char-übergreifend"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:242
+msgid "Next: Load Factories"
+msgstr "Weiter: Fabriken befüllen"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:251
+msgid "No factory planets assigned to this character."
+msgstr "Diesem Charakter sind keine Fabrik-Planeten zugewiesen."
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:254
+msgid "Factory Planets"
+msgstr "Fabrik-Planeten"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:286
+msgid "from:"
+msgstr "von:"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:297
+msgid "No routing data — add objectives and miner planets to this project."
+msgstr "Keine Routing-Daten — füge dem Projekt Ziele und Miner-Planeten hinzu."
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:310
+msgid "Done — All Complete"
+msgstr "Fertig — alles erledigt"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:318
+msgid "Maintenance Complete"
+msgstr "Wartung abgeschlossen"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:319
+#, python-format
+msgid "Good job, %(name)s. All steps done for today."
+msgstr "Gut gemacht, %(name)s. Alle Schritte für heute erledigt."
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:321
+msgid "Back to Overview"
+msgstr "Zurück zur Übersicht"
+
+#: templates/aa_pi_tracker/view/maintenance_char.html:324
+msgid "Reset"
+msgstr "Zurücksetzen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:4
+msgid "PI Tracker — Optimizer"
+msgstr "PI Tracker — Optimizer"
+
+#: templates/aa_pi_tracker/view/optimizer.html:33
+#: templates/aa_pi_tracker/view/optimizer.html:138
+msgid "Mode"
+msgstr "Modus"
+
+#: templates/aa_pi_tracker/view/optimizer.html:37
+msgid "Personal"
+msgstr "Persönlich"
+
+#: templates/aa_pi_tracker/view/optimizer.html:41
+msgid "Corp"
+msgstr "Corp"
+
+#: templates/aa_pi_tracker/view/optimizer.html:49
+msgid "Free colonized planets"
+msgstr "Freie kolonisierte Planeten"
+
+#: templates/aa_pi_tracker/view/optimizer.html:49
+#: templates/aa_pi_tracker/view/optimizer.html:68
+msgid "colonized"
+msgstr "kolonisiert"
+
+#: templates/aa_pi_tracker/view/optimizer.html:51
+#: templates/aa_pi_tracker/view/optimizer.html:70
+msgid "empty slot"
+msgid_plural "empty slots"
+msgstr[0] "freier Slot"
+msgstr[1] "freie Slots"
+
+#: templates/aa_pi_tracker/view/optimizer.html:54
+#: templates/aa_pi_tracker/view/optimizer.html:73
+msgid "locked to projects"
+msgstr "an Projekte gebunden"
+
+#: templates/aa_pi_tracker/view/optimizer.html:57
+#: templates/aa_pi_tracker/view/optimizer.html:76
+msgid "P0 unknown"
+msgstr "P0 unbekannt"
+
+#: templates/aa_pi_tracker/view/optimizer.html:61
+msgid "No free planet slots."
+msgstr "Keine freien Planeten-Slots."
+
+#: templates/aa_pi_tracker/view/optimizer.html:79
+msgid "Corp Mode: plan uses all shared corp chars."
+msgstr "Corp-Modus: Plan nutzt alle geteilten Corp-Charaktere."
+
+#: templates/aa_pi_tracker/view/optimizer.html:88
+msgid "PI Optimizer"
+msgstr "PI-Optimizer"
+
+#: templates/aa_pi_tracker/view/optimizer.html:94
+msgid "Home System"
+msgstr "Heimatsystem"
+
+#: templates/aa_pi_tracker/view/optimizer.html:95
+msgid "optional — filters planets by jump range"
+msgstr "optional — filtert Planeten nach Sprungreichweite"
+
+#: templates/aa_pi_tracker/view/optimizer.html:100
+msgid "Search system…"
+msgstr "System suchen…"
+
+#: templates/aa_pi_tracker/view/optimizer.html:103
+msgid "Save as Home System"
+msgstr "Als Heimatsystem speichern"
+
+#: templates/aa_pi_tracker/view/optimizer.html:116
+msgid "Max Jumps"
+msgstr "Max. Sprünge"
+
+#: templates/aa_pi_tracker/view/optimizer.html:126
+msgid "POCO Tax Rate"
+msgstr "POCO-Steuersatz"
+
+#: templates/aa_pi_tracker/view/optimizer.html:127
+msgid "export + import"
+msgstr "Export + Import"
+
+#: templates/aa_pi_tracker/view/optimizer.html:144
+#: templates/aa_pi_tracker/view/optimizer.html:159
+msgid "Target Product"
+msgstr "Zielprodukt"
+
+#: templates/aa_pi_tracker/view/optimizer.html:151
+msgid "Best ISK/h"
+msgstr "Beste ISK/h"
+
+#: templates/aa_pi_tracker/view/optimizer.html:174
+msgid "Quantity / h"
+msgstr "Menge / h"
+
+#: templates/aa_pi_tracker/view/optimizer.html:175
+msgid "target output rate"
+msgstr "Ziel-Ausstoßrate"
+
+#: templates/aa_pi_tracker/view/optimizer.html:185
+#: templates/aa_pi_tracker/view/optimizer.html:545
+msgid "Calculate Plan"
+msgstr "Plan berechnen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:236
+#: templates/aa_pi_tracker/view/optimizer.html:775
+msgid "Create Project from Plan"
+msgstr "Projekt aus Plan erstellen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:242
+#: templates/aa_pi_tracker/view/optimizer.html:779
+msgid "Creates a project and assigns all planets in the plan to it. Assigned planets will be excluded from future optimizer runs."
+msgstr "Erstellt ein Projekt und weist ihm alle Planeten des Plans zu. Zugewiesene Planeten werden bei künftigen Optimizer-Läufen ausgeschlossen."
+
+#: templates/aa_pi_tracker/view/optimizer.html:253
+#: templates/aa_pi_tracker/view/optimizer.html:614
+#: templates/aa_pi_tracker/view/optimizer.html:781
+msgid "Create Project"
+msgstr "Projekt erstellen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:265
+msgid "Set P0 Resource"
+msgstr "P0-Ressource festlegen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:343
+msgid "No results"
+msgstr "Keine Treffer"
+
+#: templates/aa_pi_tracker/view/optimizer.html:410
+msgid "(target output rate)"
+msgstr "(Ziel-Ausstoßrate)"
+
+#: templates/aa_pi_tracker/view/optimizer.html:410
+msgid "(parallel setups)"
+msgstr "(parallele Setups)"
+
+#: templates/aa_pi_tracker/view/optimizer.html:430
+msgid "Miner (P0→P1)"
+msgstr "Miner (P0→P1)"
+
+#: templates/aa_pi_tracker/view/optimizer.html:432
+#: templates/aa_pi_tracker/view/optimizer.html:433
+#: templates/aa_pi_tracker/view/optimizer.html:434
+msgid "Factory Planet"
+msgstr "Fabrik-Planet"
+
+#: templates/aa_pi_tracker/view/optimizer.html:444
+msgid "jumps from home"
+msgstr "Sprünge von Heimat"
+
+#: templates/aa_pi_tracker/view/optimizer.html:457
+msgid "no free planet slots (all IC capacity used)"
+msgstr "keine freien Planeten-Slots (IC-Kapazität voll)"
+
+#: templates/aa_pi_tracker/view/optimizer.html:471
+msgid "no"
+msgstr "kein"
+
+#: templates/aa_pi_tracker/view/optimizer.html:471
+msgid "planet within range"
+msgstr "Planet in Reichweite"
+
+#: templates/aa_pi_tracker/view/optimizer.html:480
+msgid "e.g."
+msgstr "z. B."
+
+#: templates/aa_pi_tracker/view/optimizer.html:482
+msgid "needed"
+msgstr "benötigt"
+
+#: templates/aa_pi_tracker/view/optimizer.html:492
+msgid "New"
+msgstr "Neuer"
+
+#: templates/aa_pi_tracker/view/optimizer.html:505
+msgid "flexible"
+msgstr "flexibel"
+
+#: templates/aa_pi_tracker/view/optimizer.html:508
+msgid "Set P0"
+msgstr "P0 setzen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:530
+msgid "Please select a target product."
+msgstr "Bitte ein Zielprodukt wählen."
+
+#: templates/aa_pi_tracker/view/optimizer.html:534
+msgid "Calculating…"
+msgstr "Berechne…"
+
+#: templates/aa_pi_tracker/view/optimizer.html:546
+msgid "Request failed:"
+msgstr "Anfrage fehlgeschlagen:"
+
+#: templates/aa_pi_tracker/view/optimizer.html:557
+msgid "Server error"
+msgstr "Serverfehler"
+
+#: templates/aa_pi_tracker/view/optimizer.html:570
+#: templates/aa_pi_tracker/view/optimizer.html:720
+msgid "Feasible"
+msgstr "Machbar"
+
+#: templates/aa_pi_tracker/view/optimizer.html:571
+msgid "Not fully feasible"
+msgstr "Nicht voll machbar"
+
+#: templates/aa_pi_tracker/view/optimizer.html:578
+#: templates/aa_pi_tracker/view/optimizer.html:633
+msgid "/day"
+msgstr "/Tag"
+
+#: templates/aa_pi_tracker/view/optimizer.html:578
+msgid "ISK/unit"
+msgstr "ISK/Einheit"
+
+#: templates/aa_pi_tracker/view/optimizer.html:580
+msgid "P0 cost"
+msgstr "P0-Kosten"
+
+#: templates/aa_pi_tracker/view/optimizer.html:581
+#: templates/aa_pi_tracker/view/optimizer.html:697
+msgid "ISK/day"
+msgstr "ISK/Tag"
+
+#: templates/aa_pi_tracker/view/optimizer.html:582
+#: templates/aa_pi_tracker/view/optimizer.html:697
+msgid "true profit"
+msgstr "echter Profit"
+
+#: templates/aa_pi_tracker/view/optimizer.html:584
+msgid "No price data"
+msgstr "Keine Preisdaten"
+
+#: templates/aa_pi_tracker/view/optimizer.html:609
+#: templates/aa_pi_tracker/view/optimizer.html:781
+msgid "Create Corp Project"
+msgstr "Corp-Projekt erstellen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:624
+msgid "ISK/day (true profit)"
+msgstr "ISK/Tag (echter Profit)"
+
+#: templates/aa_pi_tracker/view/optimizer.html:625
+msgid "gross"
+msgstr "brutto"
+
+#: templates/aa_pi_tracker/view/optimizer.html:630
+#: templates/aa_pi_tracker/view/optimizer.html:722
+msgid "planets"
+msgstr "Planeten"
+
+#: templates/aa_pi_tracker/view/optimizer.html:631
+#: templates/aa_pi_tracker/view/optimizer.html:722
+#: templates/aa_pi_tracker/view/optimizer.html:729
+msgid "miner"
+msgstr "Miner"
+
+#: templates/aa_pi_tracker/view/optimizer.html:631
+#: templates/aa_pi_tracker/view/optimizer.html:722
+#: templates/aa_pi_tracker/view/optimizer.html:729
+msgid "factory"
+msgstr "Fabrik"
+
+#: templates/aa_pi_tracker/view/optimizer.html:643
+msgid "No suitable planets within range for:"
+msgstr "Keine passenden Planeten in Reichweite für:"
+
+#: templates/aa_pi_tracker/view/optimizer.html:644
+msgid "these planet types don't exist in this region."
+msgstr "diese Planetentypen existieren in dieser Region nicht."
+
+#: templates/aa_pi_tracker/view/optimizer.html:650
+msgid "new planet(s) need to be colonized."
+msgstr "neue Planeten müssen kolonisiert werden."
+
+#: templates/aa_pi_tracker/view/optimizer.html:651
+msgid "Suggested system shown — any planet of that type within range works."
+msgstr "Vorgeschlagenes System gezeigt — jeder Planet dieses Typs in Reichweite passt."
+
+#: templates/aa_pi_tracker/view/optimizer.html:657
+msgid "Planet types available within range:"
+msgstr "Planetentypen in Reichweite verfügbar:"
+
+#: templates/aa_pi_tracker/view/optimizer.html:664
+#: templates/aa_pi_tracker/view/projects.html:593
+msgid "Role"
+msgstr "Rolle"
+
+#: templates/aa_pi_tracker/view/optimizer.html:664
+msgid "Planet / System"
+msgstr "Planet / System"
+
+#: templates/aa_pi_tracker/view/optimizer.html:665
+msgid "Jumps"
+msgstr "Sprünge"
+
+#: templates/aa_pi_tracker/view/optimizer.html:665
+msgid "P0 / Type"
+msgstr "P0 / Typ"
+
+#: templates/aa_pi_tracker/view/optimizer.html:665
+msgid "Rate needed"
+msgstr "Benötigte Rate"
+
+#: templates/aa_pi_tracker/view/optimizer.html:677
+msgid "Factory AIFs:"
+msgstr "Fabrik-AIFs:"
+
+#: templates/aa_pi_tracker/view/optimizer.html:691
+msgid "No schematics available for the given pool."
+msgstr "Keine Schemata für den Pool verfügbar."
+
+#: templates/aa_pi_tracker/view/optimizer.html:701
+msgid "All PI Products"
+msgstr "Alle PI-Produkte"
+
+#: templates/aa_pi_tracker/view/optimizer.html:701
+msgid "ranked by true ISK/day"
+msgstr "nach echtem ISK/Tag sortiert"
+
+#: templates/aa_pi_tracker/view/optimizer.html:702
+msgid "Jita buy · full P0 chain · minus POCO tax and P0 opportunity cost"
+msgstr "Jita-Kauf · volle P0-Kette · minus POCO-Steuer und P0-Opportunitätskosten"
+
+#: templates/aa_pi_tracker/view/optimizer.html:702
+msgid "click Feasible to plan"
+msgstr "auf Machbar klicken zum Planen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:708
+#: templates/aa_pi_tracker/view/profit.html:71
+msgid "Tier"
+msgstr "Stufe"
+
+#: templates/aa_pi_tracker/view/optimizer.html:710
+msgid "POCO tax/day"
+msgstr "POCO-Steuer/Tag"
+
+#: templates/aa_pi_tracker/view/optimizer.html:711
+msgid "Price"
+msgstr "Preis"
+
+#: templates/aa_pi_tracker/view/optimizer.html:712
+#: templates/aa_pi_tracker/view/overview.html:58
+msgid "Planets"
+msgstr "Planeten"
+
+#: templates/aa_pi_tracker/view/optimizer.html:713
+msgid "Status"
+msgstr "Status"
+
+#: templates/aa_pi_tracker/view/optimizer.html:713
+msgid "Required P0"
+msgstr "Benötigte P0"
+
+#: templates/aa_pi_tracker/view/optimizer.html:722
+#: templates/aa_pi_tracker/view/projects.html:448
+msgid "Need"
+msgstr "Bedarf"
+
+#: templates/aa_pi_tracker/view/optimizer.html:723
+msgid "Need slots"
+msgstr "Slots nötig"
+
+#: templates/aa_pi_tracker/view/optimizer.html:725
+msgid "No factory planet"
+msgstr "Kein Fabrik-Planet"
+
+#: templates/aa_pi_tracker/view/optimizer.html:727
+msgid "Not feasible"
+msgstr "Nicht machbar"
+
+#: templates/aa_pi_tracker/view/optimizer.html:729
+msgid "total:"
+msgstr "gesamt:"
+
+#: templates/aa_pi_tracker/view/optimizer.html:768
+msgid "Plan"
+msgstr "Plan"
+
+#: templates/aa_pi_tracker/view/optimizer.html:774
+msgid "Create Corp Project from Plan"
+msgstr "Corp-Projekt aus Plan erstellen"
+
+#: templates/aa_pi_tracker/view/optimizer.html:778
+msgid "Creates a Corp Project from this plan. Assign participants on the Corp page."
+msgstr "Erstellt ein Corp-Projekt aus diesem Plan. Teilnehmer auf der Corp-Seite zuweisen."
+
+#: templates/aa_pi_tracker/view/optimizer.html:790
+msgid "Please enter a project name."
+msgstr "Bitte einen Projektnamen eingeben."
+
+#: templates/aa_pi_tracker/view/optimizer.html:800
+#: templates/aa_pi_tracker/view/projects.html:811
+msgid "Error creating project"
+msgstr "Fehler beim Erstellen des Projekts"
+
+#: templates/aa_pi_tracker/view/optimizer.html:810
+msgid "— clear (use planet type) —"
+msgstr "— leeren (Planetentyp nutzen) —"
+
+#: templates/aa_pi_tracker/view/optimizer.html:821
+msgid "Failed to save P0 resource:"
+msgstr "P0-Ressource konnte nicht gespeichert werden:"
+
+#: templates/aa_pi_tracker/view/overview.html:4
+msgid "PI Tracker — Overview"
+msgstr "PI Tracker — Übersicht"
+
+#: templates/aa_pi_tracker/view/overview.html:24
+msgid "Click <strong>Add Character</strong> and authorise <code>esi-planets.manage_planets.v1</code>."
+msgstr "Klicke auf <strong>Charakter hinzufügen</strong> und autorisiere <code>esi-planets.manage_planets.v1</code>."
+
+#: templates/aa_pi_tracker/view/overview.html:32
+msgid "Factory ISK / h"
+msgstr "Fabrik-ISK / h"
+
+#: templates/aa_pi_tracker/view/overview.html:34
+msgid "sync prices"
+msgstr "Preise synchronisieren"
+
+#: templates/aa_pi_tracker/view/overview.html:37
+#, python-format
+msgid "P0 raw: %(val)s"
+msgstr "P0 roh: %(val)s"
+
+#: templates/aa_pi_tracker/view/overview.html:37
+msgid "factory output"
+msgstr "Fabrik-Ausstoß"
+
+#: templates/aa_pi_tracker/view/overview.html:45
+#: templates/aa_pi_tracker/view/planets.html:27
+msgid "Extractors"
+msgstr "Extraktoren"
+
+#: templates/aa_pi_tracker/view/overview.html:67
+msgid "Storage Value"
+msgstr "Lagerwert"
+
+#: templates/aa_pi_tracker/view/overview.html:72
+#, python-format
+msgid "Synced %(dt)s"
+msgstr "Synchronisiert %(dt)s"
+
+#: templates/aa_pi_tracker/view/overview.html:72
+msgid "never synced"
+msgstr "nie synchronisiert"
+
+#: templates/aa_pi_tracker/view/overview.html:80
+#: templates/aa_pi_tracker/view/planets.html:149
+msgid "Current Extraction"
+msgstr "Aktuelle Förderung"
+
+#: templates/aa_pi_tracker/view/overview.html:85
+#: templates/aa_pi_tracker/view/profit.html:212
+msgid "P0 Resource"
+msgstr "P0-Ressource"
+
+#: templates/aa_pi_tracker/view/overview.html:85
+msgid "Chars"
+msgstr "Chars"
+
+#: templates/aa_pi_tracker/view/overview.html:98
+msgid "Total"
+msgstr "Gesamt"
+
+#: templates/aa_pi_tracker/view/overview.html:106
+msgid "No active extractors. Click Sync to refresh."
+msgstr "Keine aktiven Extraktoren. Zum Aktualisieren auf Synchronisieren klicken."
+
+#: templates/aa_pi_tracker/view/overview.html:111
+msgid "Active Projects"
+msgstr "Aktive Projekte"
+
+#: templates/aa_pi_tracker/view/overview.html:128
+msgid "target"
+msgstr "Ziel"
+
+#: templates/aa_pi_tracker/view/overview.html:130
+msgid "planet"
+msgid_plural "planets"
+msgstr[0] "Planet"
+msgstr[1] "Planeten"
+
+#: templates/aa_pi_tracker/view/overview.html:142
+#: templates/aa_pi_tracker/view/projects.html:25
+msgid "New project"
+msgstr "Neues Projekt"
+
+#: templates/aa_pi_tracker/view/overview.html:152
+msgid "Extractor Schedule — Next 72h"
+msgstr "Extraktor-Zeitplan — nächste 72 h"
+
+#: templates/aa_pi_tracker/view/overview.html:159
+msgid "Expired"
+msgstr "Abgelaufen"
+
+#: templates/aa_pi_tracker/view/overview.html:173
+msgid "Critical — &lt;4h"
+msgstr "Kritisch — &lt;4 h"
+
+#: templates/aa_pi_tracker/view/overview.html:187
+msgid "Today — 4–24h"
+msgstr "Heute — 4–24 h"
+
+#: templates/aa_pi_tracker/view/overview.html:201
+msgid "Soon — 24–72h"
+msgstr "Bald — 24–72 h"
+
+#: templates/aa_pi_tracker/view/planets.html:4
+msgid "PI Tracker — Planets"
+msgstr "PI Tracker — Planeten"
+
+#: templates/aa_pi_tracker/view/planets.html:27
+msgid "Lvl"
+msgstr "Stufe"
+
+#: templates/aa_pi_tracker/view/planets.html:27
+msgid "Factories"
+msgstr "Fabriken"
+
+#: templates/aa_pi_tracker/view/planets.html:28
+#: templates/aa_pi_tracker/view/planets.html:54
+msgid "Storage"
+msgstr "Lager"
+
+#: templates/aa_pi_tracker/view/planets.html:28
+msgid "Stock ISK"
+msgstr "Bestand ISK"
+
+#: templates/aa_pi_tracker/view/planets.html:28
+#: templates/aa_pi_tracker/view/projects.html:24
+msgid "Projects"
+msgstr "Projekte"
+
+#: templates/aa_pi_tracker/view/planets.html:56
+#, python-format
+msgid "%(n)s item"
+msgid_plural "%(n)s items"
+msgstr[0] "%(n)s Eintrag"
+msgstr[1] "%(n)s Einträge"
+
+#: templates/aa_pi_tracker/view/planets.html:58
+msgid "empty"
+msgstr "leer"
+
+#: templates/aa_pi_tracker/view/planets.html:72
+#: templates/aa_pi_tracker/view/planets.html:91
+msgid "Factory Optimizer"
+msgstr "Fabrik-Optimizer"
+
+#: templates/aa_pi_tracker/view/planets.html:79
+msgid "No planets found."
+msgstr "Keine Planeten gefunden."
+
+#: templates/aa_pi_tracker/view/planets.html:95
+#: templates/aa_pi_tracker/view/planets.html:136
+msgid "Loading…"
+msgstr "Wird geladen…"
+
+#: templates/aa_pi_tracker/view/planets.html:125
+#: templates/aa_pi_tracker/view/planets.html:162
+#: templates/aa_pi_tracker/view/planets.html:186
+msgid "Optimal"
+msgstr "Optimal"
+
+#: templates/aa_pi_tracker/view/planets.html:126
+msgid "surplus"
+msgstr "Überschuss"
+
+#: templates/aa_pi_tracker/view/planets.html:127
+msgid "short"
+msgstr "fehlt"
+
+#: templates/aa_pi_tracker/view/planets.html:158
+msgid "P1 Factories"
+msgstr "P1-Fabriken"
+
+#: templates/aa_pi_tracker/view/planets.html:161
+msgid "P0 Source"
+msgstr "P0-Quelle"
+
+#: templates/aa_pi_tracker/view/planets.html:162
+#: templates/aa_pi_tracker/view/planets.html:186
+msgid "Actual"
+msgstr "Ist"
+
+#: templates/aa_pi_tracker/view/planets.html:163
+#: templates/aa_pi_tracker/view/planets.html:187
+#: templates/aa_pi_tracker/view/projects.html:450
+#: templates/aa_pi_tracker/view/projects.html:500
+msgid "Gap"
+msgstr "Lücke"
+
+#: templates/aa_pi_tracker/view/planets.html:163
+#, python-format
+msgid "Util %%"
+msgstr "Ausl. %%"
+
+#: templates/aa_pi_tracker/view/planets.html:182
+msgid "P2 Chains (single-planet)"
+msgstr "P2-Ketten (Einzelplanet)"
+
+#: templates/aa_pi_tracker/view/planets.html:185
+msgid "Bottleneck"
+msgstr "Engpass"
+
+#: templates/aa_pi_tracker/view/planets.html:202
+msgid "No active extractors on this planet."
+msgstr "Keine aktiven Extraktoren auf diesem Planeten."
+
+#: templates/aa_pi_tracker/view/planets.html:206
+msgid "Request failed."
+msgstr "Anfrage fehlgeschlagen."
+
+#: templates/aa_pi_tracker/view/profit.html:4
+msgid "PI Tracker — Profit Calculator"
+msgstr "PI Tracker — Profit-Rechner"
+
+#: templates/aa_pi_tracker/view/profit.html:11
+#: templates/aa_pi_tracker/view/profit.html:314
+#: templates/aa_pi_tracker/view/profit.html:315
+#: templates/aa_pi_tracker/view/profit.html:331
+#: templates/aa_pi_tracker/view/profit.html:332
+msgid "Sync Prices"
+msgstr "Preise synchronisieren"
+
+#: templates/aa_pi_tracker/view/profit.html:19
+msgid "Jita 4-4 buy prices"
+msgstr "Jita-4-4-Kaufpreise"
+
+#: templates/aa_pi_tracker/view/profit.html:20
+#, python-format
+msgid "Updated %(dt)s UTC"
+msgstr "Aktualisiert %(dt)s UTC"
+
+#: templates/aa_pi_tracker/view/profit.html:20
+msgid "Not synced"
+msgstr "Nicht synchronisiert"
+
+#: templates/aa_pi_tracker/view/profit.html:25
+msgid "No price data. Click <strong>Sync Prices</strong> in the top bar to fetch from Fuzzwork."
+msgstr "Keine Preisdaten. Klicke oben auf <strong>Preise synchronisieren</strong>, um sie von Fuzzwork zu laden."
+
+#: templates/aa_pi_tracker/view/profit.html:37
+msgid "POCO Export Tax"
+msgstr "POCO-Exportsteuer"
+
+#: templates/aa_pi_tracker/view/profit.html:45
+#, python-format
+msgid "Profit = Output value × (1 − POCO%%) — P0 not costed (no market price for raw resources)"
+msgstr "Profit = Ausstoßwert × (1 − POCO%%) — P0 nicht eingerechnet (kein Marktpreis für Rohstoffe)"
+
+#: templates/aa_pi_tracker/view/profit.html:49
+msgid "Hide unprofitable"
+msgstr "Unprofitable ausblenden"
+
+#: templates/aa_pi_tracker/view/profit.html:52
+msgid "All Tiers"
+msgstr "Alle Stufen"
+
+#: templates/aa_pi_tracker/view/profit.html:53
+msgid "P1 only"
+msgstr "Nur P1"
+
+#: templates/aa_pi_tracker/view/profit.html:54
+msgid "P2 only"
+msgstr "Nur P2"
+
+#: templates/aa_pi_tracker/view/profit.html:55
+msgid "P3 only"
+msgstr "Nur P3"
+
+#: templates/aa_pi_tracker/view/profit.html:56
+msgid "P4 only"
+msgstr "Nur P4"
+
+#: templates/aa_pi_tracker/view/profit.html:70
+#: templates/aa_pi_tracker/view/projects.html:447
+#: templates/aa_pi_tracker/view/projects.html:692
+#: templates/aa_pi_tracker/view/projects.html:732
+msgid "Schematic"
+msgstr "Schema"
+
+#: templates/aa_pi_tracker/view/profit.html:73
+msgid "Implied P0 opportunity cost — P0 not sold, value derived from P1 output price"
+msgstr "Impliziter P0-Opportunitätswert — P0 nicht verkauft, Wert aus P1-Ausstoßpreis abgeleitet"
+
+#: templates/aa_pi_tracker/view/profit.html:73
+msgid "P0 implied/h"
+msgstr "P0 implizit/h"
+
+#: templates/aa_pi_tracker/view/profit.html:74
+msgid "Output val/h"
+msgstr "Ausstoßwert/h"
+
+#: templates/aa_pi_tracker/view/profit.html:75
+msgid "Profit/h"
+msgstr "Profit/h"
+
+#: templates/aa_pi_tracker/view/profit.html:76
+msgid "Margin"
+msgstr "Marge"
+
+#: templates/aa_pi_tracker/view/profit.html:170
+msgid "Show details"
+msgstr "Details anzeigen"
+
+#: templates/aa_pi_tracker/view/profit.html:193
+#: templates/aa_pi_tracker/view/profit.html:201
+msgid "/cycle"
+msgstr "/Zyklus"
+
+#: templates/aa_pi_tracker/view/profit.html:213
+msgid "Qty/cycle"
+msgstr "Menge/Zyklus"
+
+#: templates/aa_pi_tracker/view/profit.html:214
+msgid "Jita buy"
+msgstr "Jita-Kauf"
+
+#: templates/aa_pi_tracker/view/profit.html:215
+msgid "Implied value — P0 not sold on market, calculated via P1 output"
+msgstr "Implizierter Wert — P0 nicht am Markt verkauft, über P1-Ausstoß berechnet"
+
+#: templates/aa_pi_tracker/view/profit.html:215
+msgid "Implied cost/h"
+msgstr "Implizite Kosten/h"
+
+#: templates/aa_pi_tracker/view/profit.html:259
+msgid "(after tax)"
+msgstr "(nach Steuer)"
+
+#: templates/aa_pi_tracker/view/profit.html:309
+#: templates/aa_pi_tracker/view/profit.html:326
+msgid "Fetching…"
+msgstr "Wird geladen…"
+
+#: templates/aa_pi_tracker/view/profit.html:313
+#: templates/aa_pi_tracker/view/profit.html:330
+msgid "Price sync queued — data updates within ~30 minutes"
+msgstr "Preis-Sync eingereiht — Daten aktualisieren sich in ~30 Minuten"
+
+#: templates/aa_pi_tracker/view/projects.html:4
+msgid "PI Tracker — Projects"
+msgstr "PI Tracker — Projekte"
+
+#: templates/aa_pi_tracker/view/projects.html:47
+msgid "No projects yet."
+msgstr "Noch keine Projekte."
+
+#: templates/aa_pi_tracker/view/projects.html:60
+msgid "No project selected"
+msgstr "Kein Projekt ausgewählt"
+
+#: templates/aa_pi_tracker/view/projects.html:61
+msgid "Select a project from the sidebar, or create a new one."
+msgstr "Wähle links ein Projekt aus oder erstelle ein neues."
+
+#: templates/aa_pi_tracker/view/projects.html:62
+msgid "You can also create projects directly from the"
+msgstr "Du kannst Projekte auch direkt erstellen aus dem"
+
+#: templates/aa_pi_tracker/view/projects.html:63
+msgid "Optimizer"
+msgstr "Optimizer"
+
+#: templates/aa_pi_tracker/view/projects.html:65
+msgid "New Project"
+msgstr "Neues Projekt"
+
+#: templates/aa_pi_tracker/view/projects.html:433
+msgid "Add production targets in the <strong>Manage</strong> tab to see factory requirements."
+msgstr "Füge im Manage-Tab Produktionsziele hinzu, um den Fabrik-Bedarf zu sehen."
+
+#: templates/aa_pi_tracker/view/projects.html:449
+msgid "Have"
+msgstr "Vorhanden"
+
+#: templates/aa_pi_tracker/view/projects.html:451
+#: templates/aa_pi_tracker/view/projects.html:498
+msgid "Need/h"
+msgstr "Bedarf/h"
+
+#: templates/aa_pi_tracker/view/projects.html:454
+#: templates/aa_pi_tracker/view/projects.html:502
+msgid "ISK target"
+msgstr "ISK Ziel"
+
+#: templates/aa_pi_tracker/view/projects.html:455
+#: templates/aa_pi_tracker/view/projects.html:503
+msgid "ISK current"
+msgstr "ISK aktuell"
+
+#: templates/aa_pi_tracker/view/projects.html:497
+msgid "Resource"
+msgstr "Ressource"
+
+#: templates/aa_pi_tracker/view/projects.html:522
+msgid "No extraction requirements."
+msgstr "Kein Förderbedarf."
+
+#: templates/aa_pi_tracker/view/projects.html:529
+msgid "No analysis data available."
+msgstr "Keine Analysedaten verfügbar."
+
+#: templates/aa_pi_tracker/view/projects.html:567
+msgid "No targets defined."
+msgstr "Keine Ziele definiert."
+
+#: templates/aa_pi_tracker/view/projects.html:624
+msgid "No planets assigned."
+msgstr "Keine Planeten zugewiesen."
+
+#: templates/aa_pi_tracker/view/projects.html:664
+msgid "Name"
+msgstr "Name"
+
+#: templates/aa_pi_tracker/view/projects.html:669
+msgid "Description"
+msgstr "Beschreibung"
+
+#: templates/aa_pi_tracker/view/projects.html:669
+msgid "optional"
+msgstr "optional"
+
+#: templates/aa_pi_tracker/view/projects.html:817
+msgid "Delete this project? This cannot be undone."
+msgstr "Dieses Projekt löschen? Das kann nicht rückgängig gemacht werden."
+
+#: templates/aa_pi_tracker/view/projects.html:874
+msgid "— select planet —"
+msgstr "— Planet wählen —"
+
+#: templates/aa_pi_tracker/view/projects.html:881
+msgid "All planets already assigned."
+msgstr "Alle Planeten bereits zugewiesen."
+
+#: templates/aa_pi_tracker/view/projects.html:907
+msgid "Failed to update role"
+msgstr "Rolle konnte nicht aktualisiert werden"
+
+#~ msgid "Build Optimizer"
+#~ msgstr "Ausbau-Optimizer"
+
+#~ msgid "Profit Calculator"
+#~ msgstr "Profit-Rechner"

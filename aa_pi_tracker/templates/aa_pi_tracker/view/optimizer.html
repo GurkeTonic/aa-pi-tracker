@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n static %}
 
 {% block page_title %}{% trans "PI Tracker — Optimizer" %}{% endblock %}
@@ -17,8 +17,7 @@
 <link rel="stylesheet" href="{% static 'aa_pi_tracker/css/pi_tracker.css' %}">
 {% endblock %}
 
-{% block content %}
-{% trans "Build Optimizer" as page_title %}{% include "framework/header/page-header.html" with title=page_title %}
+{% block pi_content %}
 <div class="container-fluid mt-3">
 
   <div class="row g-3">
@@ -29,7 +28,7 @@
       <!-- Planet pool summary -->
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-body py-2">
-          {% if has_corp_perm and corp_pools %}
+          {% if has_corp_perm %}
           <div class="d-flex align-items-center gap-2 mb-2">
             <span class="small fw-semibold">{% trans "Mode" %}:</span>
             <div class="btn-group btn-group-sm" role="group">
@@ -62,9 +61,10 @@
             <p class="text-warning small mt-2 mb-0"><i class="fas fa-exclamation-triangle me-1"></i>{% trans "No free planet slots." %}</p>
             {% endif %}
           </div>
-          {% if has_corp_perm and corp_pools %}
+          {% if has_corp_perm %}
           <!-- Corp pool -->
           <div id="pool-corp" style="display:none">
+            {% if corp_pools %}
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="badge bg-success">{{ corp_pools.free_count }} {% trans "colonized" %}</span>
               {% if corp_pools.new_slots_count %}
@@ -77,6 +77,9 @@
               <span class="badge bg-warning text-dark"><i class="fas fa-question-circle me-1"></i>{{ corp_pools.unknown_p0_count }} {% trans "P0 unknown" %}</span>
               {% endif %}
             </div>
+            {% else %}
+            <p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>{% trans "No corp members sharing PI yet." %}</p>
+            {% endif %}
             <p class="text-warning small mt-1 mb-0"><i class="fas fa-info-circle me-1"></i>{% trans "Corp Mode: plan uses all shared corp chars." %}</p>
           </div>
           {% endif %}
@@ -166,6 +169,19 @@
                 <option value="{{ val }}">{{ label }}</option>
                 {% endfor %}
               </optgroup>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- P4 Char selection (tier-4 products only) -->
+          <div class="mb-3" id="p4-char-row">
+            <label class="form-label fw-bold">{% trans "P4 Factory Char" %}
+              <span class="text-muted fw-normal small">({% trans "optional — who produces the final product" %})</span>
+            </label>
+            <select class="form-select" id="opt-p4-char">
+              <option value="">— {% trans "auto (highest CCU)" %} —</option>
+              {% for char_name, char_data in pools.by_char.items %}
+              <option value="{{ char_data.char_id }}">{{ char_name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -296,17 +312,21 @@ const HOME_SYS_NAME      = "{{ home_system_name|escapejs }}";
 const PROJECTS_URL       = "{% url 'aa_pi_tracker:projects' %}";
 const CORP_PROJECTS_URL  = "{% url 'aa_pi_tracker:corp_projects' %}";
 const CAN_MANAGE_CORP    = {% if perms.aa_pi_tracker.manage_corp_pi %}true{% else %}false{% endif %};
-const HAS_CORP_POOL      = {% if has_corp_perm and corp_pools %}true{% else %}false{% endif %};
+const HAS_CORP_POOL      = {% if has_corp_perm %}true{% else %}false{% endif %};
 let corpModeActive = false;
 
 // ── Corp Mode toggle ──────────────────────────────────────────────────────────
 if (HAS_CORP_POOL) {
+  function clearResult() {
+    const r = document.getElementById('opt-result');
+    r.innerHTML = ''; r.style.display = 'none';
+  }
   document.getElementById('opt-mode-personal')?.addEventListener('change', function () {
     if (this.checked) {
       corpModeActive = false;
       document.getElementById('pool-personal').style.display = '';
       document.getElementById('pool-corp').style.display = 'none';
-      document.getElementById('opt-result').style.display = 'none';
+      clearResult();
     }
   });
   document.getElementById('opt-mode-corp')?.addEventListener('change', function () {
@@ -314,7 +334,7 @@ if (HAS_CORP_POOL) {
       corpModeActive = true;
       document.getElementById('pool-personal').style.display = 'none';
       document.getElementById('pool-corp').style.display = '';
-      document.getElementById('opt-result').style.display = 'none';
+      clearResult();
     }
   });
 }
@@ -341,7 +361,7 @@ sysInput.addEventListener('input', () => {
         <span class="text-muted ms-1">${s.region}</span>
         <span class="badge bg-secondary ms-1">${s.sec}</span>
       </a>`
-    ).join('') || '<span class="dropdown-item small text-muted">No results</span>';
+    ).join('') || '<span class="dropdown-item small text-muted">{% trans "No results" %}</span>';
     sysDrop.style.display = 'block';
     sysDrop.querySelectorAll('a[data-id]').forEach(a => {
       a.addEventListener('click', e => {
@@ -376,7 +396,7 @@ document.getElementById('btn-save-home-sys').addEventListener('click', async () 
   const id = sysId.value;
   const name = sysInput.value.trim();
   if (!id) return;
-  await fetchPostJson(SAVE_HOME_URL, {system_id: parseInt(id), system_name: name});
+  await piPostJson(SAVE_HOME_URL, {system_id: parseInt(id), system_name: name});
   const btn = document.getElementById('btn-save-home-sys');
   const origHtml = btn.innerHTML;
   btn.innerHTML = '<i class="fas fa-check"></i>';
@@ -405,11 +425,14 @@ const modeRadios = document.querySelectorAll('input[name="opt-mode"]');
 const targetRow  = document.getElementById('target-select-row');
 const qtyRow     = document.getElementById('qty-row');
 const qtyHint    = document.getElementById('qty-row-hint');
-modeRadios.forEach(r => r.addEventListener('change', () => {
-  const isTarget = r.value === 'target';
+const p4CharRow  = document.getElementById('p4-char-row');
+function applyModeToggle(isTarget) {
   targetRow.style.display = isTarget ? '' : 'none';
-  qtyHint.textContent = isTarget ? '(target output rate)' : '(parallel setups)';
-}));
+  if (p4CharRow) p4CharRow.style.display = isTarget ? '' : 'none';
+  qtyHint.textContent = isTarget ? '{% trans "(target output rate)" %}' : '{% trans "(parallel setups)" %}';
+}
+modeRadios.forEach(r => r.addEventListener('change', () => applyModeToggle(r.value === 'target')));
+applyModeToggle(document.querySelector('input[name="opt-mode"]:checked')?.value === 'target');
 
 // Qty slider
 const qtySlider = document.getElementById('opt-qty');
@@ -428,11 +451,11 @@ function tierBadge(t) {
   return `<span class="badge bg-${TIER_COLOR[t]??'secondary'}">P${t}</span>`;
 }
 const ROLE = {
-  miner:        {label:'Miner (P0→P1)',    cls:'bg-primary',           icon:'fa-hammer'},
-  factory_p4:   {label:'P4 Factory',       cls:'bg-danger',            icon:'fa-industry'},
-  factory:      {label:'Factory Planet',   cls:'bg-warning text-dark', icon:'fa-cogs'},
-  factory_p2p3: {label:'Factory Planet',   cls:'bg-warning text-dark', icon:'fa-cogs'},
-  factory_p2:   {label:'Factory Planet',   cls:'bg-warning text-dark', icon:'fa-cogs'},
+  miner:        {label:'{% trans "Miner (P0→P1)" %}',    cls:'bg-primary',           icon:'fa-hammer'},
+  factory_p4:   {label:'{% trans "P4 Factory" %}',       cls:'bg-danger',            icon:'fa-industry'},
+  factory:      {label:'{% trans "Factory Planet" %}',   cls:'bg-warning text-dark', icon:'fa-cogs'},
+  factory_p2p3: {label:'{% trans "Factory Planet" %}',   cls:'bg-warning text-dark', icon:'fa-cogs'},
+  factory_p2:   {label:'{% trans "Factory Planet" %}',   cls:'bg-warning text-dark', icon:'fa-cogs'},
 };
 function roleBadge(role) {
   const r = ROLE[role] ?? {label:role, cls:'bg-secondary', icon:'fa-question'};
@@ -442,7 +465,7 @@ function roleBadge(role) {
 function jumpBadge(jumps) {
   if (jumps === null || jumps === undefined) return '';
   const cls = jumps === 0 ? 'bg-success' : jumps <= 3 ? 'bg-primary' : jumps <= 6 ? 'bg-warning text-dark' : 'bg-danger';
-  return `<span class="badge ${cls}" title="${jumps} jump${jumps!==1?'s':''} from home">${jumps}J</span>`;
+  return `<span class="badge ${cls}" title="${jumps} {% trans 'jumps from home' %}">${jumps}J</span>`;
 }
 
 function planetRow(a) {
@@ -455,7 +478,7 @@ function planetRow(a) {
       <td>${roleBadge(role)}</td>
       <td colspan="2" class="small">
         <i class="fas fa-user-times text-danger me-1"></i>
-        ${what} — no free planet slots (all IC capacity used)
+        ${what} — {% trans "no free planet slots (all IC capacity used)" %}
       </td>
       <td>—</td><td>—</td><td></td>
     </tr>`;
@@ -469,7 +492,7 @@ function planetRow(a) {
       <td>${roleBadge(role)}</td>
       <td colspan="2" class="small">
         <i class="fas fa-times-circle text-danger me-1"></i>
-        ${what} — no ${types || '?'} planet within range
+        ${what} — {% trans "no" %} ${types || '?'} {% trans "planet within range" %}
       </td>
       <td>—</td><td>—</td><td></td>
     </tr>`;
@@ -478,10 +501,12 @@ function planetRow(a) {
   // New (uncolonized) slot needed
   if (a.new_slot) {
     const types = (a.needed_types ?? []).map(t => `<span class="badge bg-light text-dark border" style="font-size:.65rem">${t}</span>`).join(' ');
-    const ex = a.example_system ? `e.g. ${a.example_system} (${a.example_jumps}J)` : '';
+    const exRadius = a.example_radius_km ? ` ~${a.example_radius_km.toLocaleString()} km` : '';
+    const exPlanet = a.example_planet_name ? ` · ${a.example_planet_name}` : '';
+    const ex = a.example_system ? `{% trans "e.g." %} ${a.example_system} (${a.example_jumps}J)${exPlanet}${exRadius}` : '';
     const p0cell = role === 'miner'
-      ? `<span class="text-muted small">${a.p0 ?? ''} needed</span><br>${types}`
-      : `<span class="text-muted small">${types} planet</span>`;
+      ? `<span class="text-muted small">${a.p0 ?? ''} {% trans "needed" %}</span><br>${types}`
+      : `<span class="text-muted small">${types} {% trans "Planet" %}</span>`;
     const img = a.char_id
       ? `<img src="https://images.evetech.net/characters/${a.char_id}/portrait?size=32"
           class="rounded-circle me-1" width="22" height="22" alt="" style="vertical-align:middle">`
@@ -490,7 +515,7 @@ function planetRow(a) {
       <td>${roleBadge(role)}</td>
       <td>${img}<strong class="small">${a.char ?? '—'}</strong></td>
       <td class="small">
-        <span class="text-dark fw-semibold"><i class="fas fa-plus-circle me-1"></i>New ${a.type_display ?? ''} Planet</span>
+        <span class="text-dark fw-semibold"><i class="fas fa-plus-circle me-1"></i>{% trans "New" %} ${a.type_display ?? ''} {% trans "Planet" %}</span>
         ${ex ? `<br><span class="text-muted" style="font-size:.7rem">${ex}</span>` : ''}
       </td>
       <td>${a.example_jumps != null ? jumpBadge(a.example_jumps) : '—'}</td>
@@ -500,23 +525,44 @@ function planetRow(a) {
   }
 
   // Existing colonized planet
-  const p0cell = role === 'miner'
-    ? (a.known_p0
-        ? `<span class="badge bg-light text-dark border">${a.known_p0}</span>${a.rate ? ` <small class="text-muted">${a.rate.toLocaleString()}/h</small>` : ''}`
-        : `<span class="badge bg-warning text-dark">flexible</span>
-           <button class="btn btn-outline-warning btn-sm py-0 ms-1" style="font-size:.7rem"
-             data-action="open-p0" data-pk="${a.pk}" data-name="${(a.name ?? '').replace(/"/g,'&quot;')}" data-possible='${JSON.stringify(a.possible_p0 ?? [])}'>
-             Set P0</button>`)
-    : `<span class="text-muted small">${a.type_display}</span>`;
+  const rateDisplay = a.rate ? ` <small class="text-muted">${a.rate.toLocaleString()}/h</small>` : '';
+  let p0cell;
+  if (role !== 'miner') {
+    p0cell = `<span class="text-muted small">${a.type_display}</span>`;
+  } else if (a.known_p0 && a.known_p0 === a.p0) {
+    // Active extractor running the right resource
+    p0cell = `<span class="badge bg-light text-dark border">${a.known_p0}</span>${rateDisplay}`;
+  } else if (a.known_p0 && a.known_p0 !== a.p0) {
+    // Active extractor but extracting the WRONG resource — show mismatch warning
+    p0cell = `<span class="badge bg-light text-dark border">${a.known_p0}</span>${rateDisplay}
+      <i class="fas fa-exclamation-triangle text-danger ms-1"
+         title="{% trans "Extractor is set to" %} ${a.known_p0}, {% trans "but the plan needs" %} ${a.p0}"></i>`;
+  } else if (a.p0) {
+    // No extractor running — show the needed P0 so the user knows what to set up
+    p0cell = `<span class="badge bg-secondary">${a.p0} {% trans "needed" %}</span>
+      <button class="btn btn-outline-secondary btn-sm py-0 ms-1" style="font-size:.7rem"
+        data-action="open-p0" data-pk="${a.pk}" data-name="${(a.name ?? '').replace(/"/g,'&quot;')}" data-possible='${JSON.stringify(a.possible_p0 ?? [])}'>
+        {% trans "Set P0" %}</button>`;
+  } else {
+    // No extractor, no known target (shouldn't normally occur)
+    p0cell = `<span class="badge bg-warning text-dark">{% trans "flexible" %}</span>
+      <button class="btn btn-outline-warning btn-sm py-0 ms-1" style="font-size:.7rem"
+        data-action="open-p0" data-pk="${a.pk}" data-name="${(a.name ?? '').replace(/"/g,'&quot;')}" data-possible='${JSON.stringify(a.possible_p0 ?? [])}'>
+        {% trans "Set P0" %}</button>`;
+  }
+  const rateWarning = (role === 'miner' && a.rate_ok === false)
+    ? ` <i class="fas fa-exclamation-triangle text-warning ms-1"
+          title="{% trans "Current extraction rate is below the plan's requirement. Consider more heads, shorter cycles, or a richer planet." %}"></i>`
+    : '';
   const img = `<img src="https://images.evetech.net/characters/${a.char_id}/portrait?size=32"
     class="rounded-circle me-1" width="22" height="22" alt="" style="vertical-align:middle">`;
   return `<tr>
     <td>${roleBadge(role)}</td>
     <td>${img}<strong class="small">${a.char}</strong></td>
-    <td class="small">${a.name}<br><span class="text-muted" style="font-size:.7rem">${a.system}</span></td>
+    <td class="small">${a.name}<br><span class="text-muted" style="font-size:.7rem">${a.system}${a.radius_km ? ` · ~${a.radius_km.toLocaleString()} km` : ''}</span></td>
     <td>${jumpBadge(a.jumps)}</td>
     <td>${p0cell}</td>
-    <td class="text-muted small">${role === 'miner' ? `${(a.p0_rate_needed ?? 0).toLocaleString()} P0/h` : ''}</td>
+    <td class="text-muted small">${role === 'miner' ? `${(a.p0_rate_needed ?? 0).toLocaleString()} P0/h${rateWarning}` : ''}</td>
   </tr>`;
 }
 
@@ -528,23 +574,27 @@ document.getElementById('btn-opt-calc').addEventListener('click', async () => {
   const maxJ    = parseInt(jumpsSlider.value);
   const taxRate = parseFloat(document.getElementById('opt-tax-rate').value) || 0;
 
-  if (mode === 'target' && !target) { alert('Please select a target product.'); return; }
+  if (mode === 'target' && !target) { alert('{% trans "Please select a target product." %}'); return; }
 
   const btn = document.getElementById('btn-opt-calc');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Calculating…';
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{% trans "Calculating…" %}';
 
   const qtyPerHour = parseInt(qtySlider.value) || 1;
+  const p4CharId = parseInt(document.getElementById('opt-p4-char')?.value) || null;
   const payload = {mode, system_id: sysIdV, max_jumps: maxJ, tax_rate: taxRate, qty_per_hour: qtyPerHour, corp_mode: corpModeActive};
-  if (mode === 'target') payload.target = target;
+  if (mode === 'target') {
+    payload.target = target;
+    payload.p4_char_id = p4CharId;
+  }
 
   let data;
   try {
-    data = await fetchPostJson(ANALYZE_URL, payload);
+    data = await piPostJson(ANALYZE_URL, payload);
   } catch (err) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-calculator me-1"></i>Calculate Plan';
-    document.getElementById('opt-result').innerHTML = `<div class="alert alert-danger">Request failed: ${err}</div>`;
+    btn.innerHTML = '<i class="fas fa-calculator me-1"></i>{% trans "Calculate Plan" %}';
+    document.getElementById('opt-result').innerHTML = `<div class="alert alert-danger">{% trans "Request failed:" %} ${err}</div>`;
     document.getElementById('opt-result').style.display = '';
     return;
   }
@@ -555,7 +605,11 @@ document.getElementById('btn-opt-calc').addEventListener('click', async () => {
   const el = document.getElementById('opt-result');
   el.style.display = '';
 
-  if (!data.ok) { el.innerHTML = `<div class="alert alert-danger">Server error</div>`; return; }
+  if (!data.ok) {
+    const msg = data.error || '{% trans "Server error" %}';
+    el.innerHTML = `<div class="alert alert-warning"><i class="fas fa-info-circle me-1"></i>${msg}</div>`;
+    return;
+  }
 
   _calcDone = true;
   if (mode === 'target') renderTarget(data.result);
@@ -568,21 +622,21 @@ function renderTarget(r) {
   if (r.error) { el.innerHTML = `<div class="alert alert-danger">${r.error}</div>`; return; }
 
   const feasBadge = r.feasible
-    ? '<span class="badge bg-success fs-6"><i class="fas fa-check me-1"></i>Feasible</span>'
-    : '<span class="badge bg-danger fs-6"><i class="fas fa-times me-1"></i>Not fully feasible</span>';
+    ? '<span class="badge bg-success fs-6"><i class="fas fa-check me-1"></i>{% trans "Feasible" %}</span>'
+    : '<span class="badge bg-danger fs-6"><i class="fas fa-times me-1"></i>{% trans "Not fully feasible" %}</span>';
 
   const hasTax = r.tax_rate > 0 && r.tax_cost_per_day > 0;
   const hasP0Cost = (r.p0_opportunity_cost_per_day || 0) > 0;
   let iskStr;
   if (r.isk_per_day > 0) {
     const trueVal = (r.isk_per_day_true || r.isk_per_day_net || r.isk_per_day).toLocaleString();
-    let details = `${r.output_per_day}/day · ${r.price.toLocaleString()} ISK/unit`;
+    let details = `${r.output_per_day}{% trans "/day" %} · ${r.price.toLocaleString()} {% trans "ISK/unit" %}`;
     if (hasTax) details += ` · -${r.tax_cost_per_day.toLocaleString()} POCO`;
-    if (hasP0Cost) details += ` · -${r.p0_opportunity_cost_per_day.toLocaleString()} P0 cost`;
-    iskStr = `<strong class="text-success">${trueVal} ISK/day</strong>
-      <span class="text-muted small ms-1">(true profit · ${details})</span>`;
+    if (hasP0Cost) details += ` · -${r.p0_opportunity_cost_per_day.toLocaleString()} {% trans "P0 cost" %}`;
+    iskStr = `<strong class="text-success">${trueVal} {% trans "ISK/day" %}</strong>
+      <span class="text-muted small ms-1">({% trans "true profit" %} · ${details})</span>`;
   } else {
-    iskStr = '<span class="text-muted">No price data</span>';
+    iskStr = '<span class="text-muted">{% trans "No price data" %}</span>';
   }
 
   let html = `<div class="card border-0 shadow-sm">
@@ -590,8 +644,7 @@ function renderTarget(r) {
       <strong>${r.target}</strong> ${tierBadge(r.tier)} ${feasBadge}
       <span class="ms-auto">${iskStr}</span>`;
 
-  if (r.assigned_pks && r.assigned_pks.length) {
-    const assignments = [
+  const assignments = [
       ...(r.miner_assignments || []).filter(a => a.pk).map(a => ({pk: a.pk, role: a.role, p0: a.p0 || ''})),
       ...(r.miner_assignments || []).filter(a => a.new_slot && !a.truly_missing && !a.no_slots).map(a => ({
         new_slot: true, role: a.role, p0: a.p0 || '',
@@ -603,16 +656,17 @@ function renderTarget(r) {
         char_id: a.char_id, char: a.char, type: a.type, example_system: a.example_system,
       })),
     ];
+  if (assignments.length) {
     const aEnc = encodeURIComponent(JSON.stringify(assignments));
     if (corpModeActive) {
       html += `<button class="btn btn-sm btn-outline-warning"
         data-action="open-create-project" data-target="${r.target}" data-enc="${aEnc}" data-corp="1">
-        <i class="fas fa-users me-1"></i>Create Corp Project
+        <i class="fas fa-users me-1"></i>{% trans "Create Corp Project" %}
       </button>`;
     } else {
       html += `<button class="btn btn-sm btn-outline-success"
         data-action="open-create-project" data-target="${r.target}" data-enc="${aEnc}" data-corp="0">
-        <i class="fas fa-folder-plus me-1"></i>Create Project
+        <i class="fas fa-folder-plus me-1"></i>{% trans "Create Project" %}
       </button>`;
     }
   }
@@ -622,16 +676,16 @@ function renderTarget(r) {
   const trueDay = r.isk_per_day_true || r.isk_per_day_net || r.isk_per_day;
   const iskDayDisplay = r.isk_per_day > 0
     ? `<span><i class="fas fa-coins me-1 text-muted"></i>
-        <strong class="text-success">${trueDay.toLocaleString()}</strong> ISK/day (true profit)
-        <span class="text-muted">· ${r.isk_per_day.toLocaleString()} gross${hasTax ? ' · -' + r.tax_cost_per_day.toLocaleString() + ' POCO' : ''}${hasP0Cost ? ' · -' + r.p0_opportunity_cost_per_day.toLocaleString() + ' P0' : ''}</span>
+        <strong class="text-success">${trueDay.toLocaleString()}</strong> {% trans "ISK/day (true profit)" %}
+        <span class="text-muted">· ${r.isk_per_day.toLocaleString()} {% trans "gross" %}${hasTax ? ' · -' + r.tax_cost_per_day.toLocaleString() + ' POCO' : ''}${hasP0Cost ? ' · -' + r.p0_opportunity_cost_per_day.toLocaleString() + ' P0' : ''}</span>
        </span>`
     : '';
   html += `<div class="px-3 py-2 bg-light border-bottom d-flex flex-wrap gap-3 small">
     <span><i class="fas fa-globe me-1 text-muted"></i>
-      <strong>${r.total_planets}</strong> planets
-      <span class="text-muted">(${r.total_miners} miner + ${r.factory_planets_needed} factory)</span>
+      <strong>${r.total_planets}</strong> {% trans "planets" %}
+      <span class="text-muted">(${r.total_miners} {% trans "miner" %} + ${r.factory_planets_needed} {% trans "factory" %})</span>
     </span>
-    <span><i class="fas fa-box me-1 text-muted"></i><strong>${r.output_per_day}</strong>/day</span>
+    <span><i class="fas fa-box me-1 text-muted"></i><strong>${r.output_per_day}</strong>{% trans "/day" %}</span>
     ${iskDayDisplay}
   </div>`;
 
@@ -641,29 +695,29 @@ function renderTarget(r) {
   if (r.missing_p0 && r.missing_p0.length) {
     html += `<div class="alert alert-danger rounded-0 py-2 mb-0 px-3 small">
       <i class="fas fa-times-circle me-1"></i>
-      <strong>No suitable planets within range for:</strong> ${r.missing_p0.join(', ')}
-      — these planet types don't exist in this region.
+      <strong>{% trans "No suitable planets within range for:" %}</strong> ${r.missing_p0.join(', ')}
+      — {% trans "these planet types don't exist in this region." %}
     </div>`;
   }
   if (r.new_slots_needed > 0) {
     html += `<div class="alert alert-warning rounded-0 py-1 mb-0 px-3 small">
       <i class="fas fa-plus-circle me-1"></i>
-      <strong>${r.new_slots_needed} new planet${r.new_slots_needed > 1 ? 's' : ''} need to be colonized.</strong>
-      Suggested system shown — any planet of that type within range works.
+      <strong>${r.new_slots_needed} {% trans "new planet(s) need to be colonized." %}</strong>
+      {% trans "Suggested system shown — any planet of that type within range works." %}
     </div>`;
   }
   if (r.filtered_by_jumps && r.sde_avail) {
     html += `<div class="alert alert-info rounded-0 py-1 mb-0 px-3 small">
       <i class="fas fa-info-circle me-1"></i>
-      Planet types available within range: ${r.sde_avail.join(', ')}.
+      {% trans "Planet types available within range:" %} ${r.sde_avail.join(', ')}.
     </div>`;
   }
 
   html += `<table class="table table-sm table-hover mb-0">
     <thead class="table-dark">
       <tr>
-        <th>Role</th><th>Character</th><th>Planet / System</th>
-        <th>Jumps</th><th>P0 / Type</th><th>Rate needed</th>
+        <th>{% trans "Role" %}</th><th>{% trans "Character" %}</th><th>{% trans "Planet / System" %}</th>
+        <th>{% trans "Jumps" %}</th><th>{% trans "P0 / Type" %}</th><th>{% trans "Rate needed" %}</th>
       </tr>
     </thead><tbody>`;
 
@@ -675,7 +729,7 @@ function renderTarget(r) {
   // AIF breakdown
   if (r.aifs_breakdown && r.aifs_breakdown.length) {
     html += `<div class="px-3 py-2 border-top">
-      <span class="text-muted small text-uppercase me-2">Factory AIFs:</span>`;
+      <span class="text-muted small text-uppercase me-2">{% trans "Factory AIFs:" %}</span>`;
     for (const f of r.aifs_breakdown) {
       html += `<span class="badge bg-light text-dark border me-1">${tierBadge(f.tier)} ${f.count}× ${f.schematic}</span>`;
     }
@@ -689,45 +743,45 @@ function renderTarget(r) {
 // ── ISK/h result ──────────────────────────────────────────────────────────────
 function renderISK(results) {
   const el = document.getElementById('opt-result');
-  if (!results.length) { el.innerHTML = `<div class="alert alert-info">No schematics available for the given pool.</div>`; return; }
+  if (!results.length) { el.innerHTML = `<div class="alert alert-info">{% trans "No schematics available for the given pool." %}</div>`; return; }
 
   const taxRate = parseFloat(document.getElementById('opt-tax-rate').value) || 0;
   const hasTax  = taxRate > 0;
   const qty     = parseInt(qtySlider.value) || 1;
   const qtyNote = qty > 1 ? ` <span class="badge bg-info text-dark">${qty}×/h</span>` : '';
-  const iskHdr  = `ISK/day <span class="text-warning small">(true profit)</span>`;
+  const iskHdr  = `{% trans "ISK/day" %} <span class="text-warning small">({% trans "true profit" %})</span>`;
 
   let html = `<div class="card border-0 shadow-sm">
     <div class="card-header py-2">
-      <strong>All PI Products${qtyNote} — ranked by true ISK/day</strong>
-      <span class="text-muted small ms-2">(Jita buy · full P0 chain · minus POCO tax &amp; P0 opportunity cost${hasTax ? ` · ${taxRate}% POCO` : ''} · click Feasible to plan)</span>
+      <strong>{% trans "All PI Products" %}${qtyNote} — {% trans "ranked by true ISK/day" %}</strong>
+      <span class="text-muted small ms-2">({% trans "Jita buy · full P0 chain · minus POCO tax and P0 opportunity cost" %}${hasTax ? ` · ${taxRate}% POCO` : ''} · {% trans "click Feasible to plan" %})</span>
     </div>
     <div class="table-responsive">
     <table class="table table-sm table-hover mb-0">
       <thead class="table-dark">
         <tr>
-          <th>Product</th><th>Tier</th>
+          <th>{% trans "Product" %}</th><th>{% trans "Tier" %}</th>
           <th class="text-end">${iskHdr}</th>
-          ${hasTax ? '<th class="text-end text-warning small">POCO tax/day</th>' : ''}
-          <th class="text-end">Price</th>
-          <th class="text-center">Planets</th>
-          <th>Status</th><th>Required P0</th>
+          ${hasTax ? '<th class="text-end text-warning small">{% trans "POCO tax/day" %}</th>' : ''}
+          <th class="text-end">{% trans "Price" %}</th>
+          <th class="text-center">{% trans "Planets" %}</th>
+          <th>{% trans "Status" %}</th><th>{% trans "Required P0" %}</th>
         </tr>
       </thead><tbody>`;
 
   for (const r of results) {
     let feasBadge;
     if (r.feasible) {
-      feasBadge = `<span class="badge bg-success cursor-pointer" data-action="switch-target" data-product="${r.product}">Feasible ▶</span>`;
+      feasBadge = `<span class="badge bg-success cursor-pointer" data-action="switch-target" data-product="${r.product}">{% trans "Feasible" %} ▶</span>`;
     } else if (!r.enough_slots) {
-      const tip = `Need ${r.planets_needed} planets (${r.miners_needed} miner + ${r.factory_planets_needed} factory)`;
-      feasBadge = `<span class="badge bg-warning text-dark" title="${tip}">Need slots</span>`;
+      const tip = `{% trans "Need" %} ${r.planets_needed} {% trans "planets" %} (${r.miners_needed} {% trans "miner" %} + ${r.factory_planets_needed} {% trans "factory" %})`;
+      feasBadge = `<span class="badge bg-warning text-dark" title="${tip}">{% trans "Need slots" %}</span>`;
     } else if (r.factory_ok === false) {
-      feasBadge = `<span class="badge bg-secondary">No factory planet</span>`;
+      feasBadge = `<span class="badge bg-secondary">{% trans "No factory planet" %}</span>`;
     } else {
-      feasBadge = `<span class="badge bg-secondary">Not feasible</span>`;
+      feasBadge = `<span class="badge bg-secondary">{% trans "Not feasible" %}</span>`;
     }
-    const planetsTip = `${r.planets_needed} total: ${r.miners_needed} miner + ${r.factory_planets_needed} factory`;
+    const planetsTip = `${r.planets_needed} {% trans "total:" %} ${r.miners_needed} {% trans "miner" %} + ${r.factory_planets_needed} {% trans "factory" %}`;
     const p0html = r.required_p0.map(p0 => {
       const miss = r.missing_p0.includes(p0);
       return `<span class="badge ${miss?'bg-danger':'bg-light text-dark border'}" style="font-size:.65rem">${p0}</span>`;
@@ -766,20 +820,20 @@ function switchToTarget(product) {
 
 // ── Create project ────────────────────────────────────────────────────────────
 function openCreateProject(target, assignments, isCorp = false) {
-  document.getElementById('project-name-input').value = isCorp ? 'Corp ' + target : target + ' Plan';
+  document.getElementById('project-name-input').value = isCorp ? 'Corp ' + target : target + ' {% trans "Plan" %}';
   document.getElementById('project-planet-pks').value = JSON.stringify(assignments);
   document.getElementById('project-target-product').value = target;
   document.getElementById('project-is-corp').value = isCorp ? '1' : '0';
   document.getElementById('create-project-modal-title').innerHTML =
     isCorp
-      ? '<i class="fas fa-users me-1"></i>Create Corp Project from Plan'
-      : '<i class="fas fa-folder-plus me-1"></i>Create Project from Plan';
+      ? '<i class="fas fa-users me-1"></i>{% trans "Create Corp Project from Plan" %}'
+      : '<i class="fas fa-folder-plus me-1"></i>{% trans "Create Project from Plan" %}';
   document.getElementById('create-project-modal-desc').textContent =
     isCorp
-      ? 'Creates a Corp Project from this plan. Assign participants on the Corp page.'
-      : 'Creates a project and assigns all planets in the plan to it. Assigned planets will be excluded from future optimizer runs.';
+      ? '{% trans "Creates a Corp Project from this plan. Assign participants on the Corp page." %}'
+      : '{% trans "Creates a project and assigns all planets in the plan to it. Assigned planets will be excluded from future optimizer runs." %}';
   document.getElementById('btn-create-project-label').textContent =
-    isCorp ? 'Create Corp Project' : 'Create Project';
+    isCorp ? '{% trans "Create Corp Project" %}' : '{% trans "Create Project" %}';
   new bootstrap.Modal(document.getElementById('create-project-modal')).show();
 }
 
@@ -788,17 +842,17 @@ document.getElementById('btn-create-project').addEventListener('click', async ()
   const assignments    = JSON.parse(document.getElementById('project-planet-pks').value || '[]');
   const target_product = document.getElementById('project-target-product').value;
   const isCorp         = document.getElementById('project-is-corp').value === '1';
-  if (!name) { alert('Please enter a project name.'); return; }
+  if (!name) { alert('{% trans "Please enter a project name." %}'); return; }
   const btn = document.getElementById('btn-create-project');
   btn.disabled = true;
   const url = isCorp ? CREATE_CORP_PRJ_URL : CREATE_PRJ_URL;
-  const data = await fetchPostJson(url, {name, assignments, target_product, target_qty_per_hour: parseInt(qtySlider.value) || 1});
+  const data = await piPostJson(url, {name, assignments, target_product, target_qty_per_hour: parseInt(qtySlider.value) || 1});
   btn.disabled = false;
   if (data.ok) {
     bootstrap.Modal.getInstance(document.getElementById('create-project-modal')).hide();
     window.location.href = isCorp ? CORP_PROJECTS_URL : PROJECTS_URL;
   } else {
-    alert(data.error ?? 'Error creating project');
+    alert(data.error ?? '{% trans "Error creating project" %}');
   }
 });
 
@@ -808,7 +862,7 @@ function openP0Modal(pk, name, possible) {
   _p0pk = pk;
   document.getElementById('p0-modal-planet-name').textContent = name;
   const sel = document.getElementById('p0-modal-select');
-  sel.innerHTML = '<option value="">— clear (use planet type) —</option>'
+  sel.innerHTML = '<option value="">{% trans "— clear (use planet type) —" %}</option>'
     + possible.map(p => `<option value="${p}">${p}</option>`).join('');
   new bootstrap.Modal(document.getElementById('p0-modal')).show();
 }
@@ -817,9 +871,9 @@ document.getElementById('btn-p0-save').addEventListener('click', async () => {
   if (!_p0pk) return;
   const resource = document.getElementById('p0-modal-select').value;
   try {
-    await fetchPostJson(SET_RES_URL.replace('{pk}', _p0pk), {resource});
+    await piPostJson(SET_RES_URL.replace('{pk}', _p0pk), {resource});
   } catch (err) {
-    alert(`Failed to save P0 resource: ${err}`);
+    alert(`{% trans "Failed to save P0 resource:" %} ${err}`);
     return;
   }
   bootstrap.Modal.getInstance(document.getElementById('p0-modal')).hide();

@@ -33,7 +33,7 @@ def _planet_display(pp):
     return pp.planned_system_name or "New Planet", pp.planned_planet_type or "unknown", pp.planned_system_name or "", False
 
 
-def _build_buildout_data(project, user_filter=None):
+def _build_buildout_data(project, user_filter=None, user_char_ids=None):
     p0_to_p1 = _p0_to_p1_map()
     objectives = list(project.objectives.all())
 
@@ -106,7 +106,10 @@ def _build_buildout_data(project, user_filter=None):
             char_name = pp.planet.owner.character.character_name
         else:
             if user_filter:
-                continue
+                if not pp.planned_char_id:
+                    continue
+                if user_char_ids is not None and pp.planned_char_id not in user_char_ids:
+                    continue
             char_id = pp.planned_char_id or 0
             char_name = pp.planned_char_name or "Unassigned"
 
@@ -181,7 +184,8 @@ def buildout_page(request, pk):
         if (project.is_corp_project and project.user == request.user)
         else request.user
     )
-    chars_data = _build_buildout_data(project, user_filter=user_filter)
+    user_char_ids = {o.character.character_id for o in owners} if user_filter else None
+    chars_data = _build_buildout_data(project, user_filter=user_filter, user_char_ids=user_char_ids)
     ctx = {
         "active_page": "corp_projects" if project.is_corp_project else "projects",
         "project": project,

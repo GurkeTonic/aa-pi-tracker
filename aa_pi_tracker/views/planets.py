@@ -3,6 +3,7 @@ import json
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.views.decorators.http import require_POST
 
 from ..models import PiPlanet
 from ..pi_data import suggest_factory_setup
@@ -58,7 +59,7 @@ def planet_optimizer_json(request, planet_pk):
     for ext in planet.extractors.all():
         if ext.product_name:
             extraction_rates[ext.product_name] = (
-                extraction_rates.get(ext.product_name, 0.0) + ext.qty_per_hour
+                extraction_rates.get(ext.product_name, 0.0) + ext.avg_per_hour
             )
 
     actual_factories: dict[str, int] = {}
@@ -85,9 +86,8 @@ def planet_optimizer_json(request, planet_pk):
 
 @login_required
 @permission_required("aa_pi_tracker.view_pi")
+@require_POST
 def set_planet_resource(request, planet_pk):
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=405)
     planet = get_object_or_404(PiPlanet, pk=planet_pk, owner__user=request.user)
     try:
         data = json.loads(request.body)

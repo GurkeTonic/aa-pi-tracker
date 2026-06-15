@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n pi_filters static %}
 
 {% block page_title %}{% trans "PI Tracker — Overview" %}{% endblock %}
@@ -15,8 +15,7 @@
 </li>
 {% endblock %}
 
-{% block content %}
-{% include "framework/header/page-header.html" with title="PI Tracker" %}
+{% block pi_content %}
 <div class="container-fluid mt-3">
 
 {% if not owners_info %}
@@ -220,15 +219,10 @@
 <script>
 (function () {
   "use strict";
-  document.getElementById("btn-sync")?.addEventListener("click", function () {
-    const btn = this;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> {% trans "Queuing…" %}';
-    fetchPost("{% url 'aa_pi_tracker:trigger_sync' %}", {}).then(() => {
-      btn.innerHTML = '<i class="fas fa-check"></i> {% trans "Queued" %}';
-      btn.title = "{% trans 'ESI sync queued — data updates within ~10 minutes' %}";
-      setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync" %}'; btn.title = ""; }, 15000);
-    }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> {% trans "Sync" %}'; });
+  bindSyncButton({
+    url: "{% url 'aa_pi_tracker:trigger_sync' %}",
+    busy: "{% trans 'Queuing…' %}", done: "{% trans 'Queued' %}",
+    title: "{% trans 'ESI sync queued — data updates within ~10 minutes' %}", wait: 15000,
   });
 }());
 </script>

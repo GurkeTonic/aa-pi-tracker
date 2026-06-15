@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n pi_filters evelinks static %}
 
 {% block page_title %}{% trans "PI Tracker — Characters" %}{% endblock %}
@@ -27,8 +27,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
-{% include "framework/header/page-header.html" with title="Characters" %}
+{% block pi_content %}
 <div class="container-fluid mt-3">
   <div class="row g-3 mb-3">
     {% for info in owners_info %}
@@ -57,11 +56,13 @@
                 {% endif %}
               </div>
             </div>
+            {% if has_corp_perm %}
             <button class="btn btn-sm {% if info.owner.shared_with_corp %}btn-success{% else %}btn-outline-secondary{% endif %} btn-share-char flex-shrink-0"
                     data-pk="{{ info.owner.pk }}"
-                    title="{% if info.owner.shared_with_corp %}Shared with Corp — click to unshare{% else %}Share with Corp{% endif %}">
+                    title="{% if info.owner.shared_with_corp %}{% trans 'Shared with Corp — click to unshare' %}{% else %}{% trans 'Share with Corp' %}{% endif %}">
               <i class="fas fa-share-alt"></i>
             </button>
+            {% endif %}
             <button class="btn btn-sm btn-outline-danger btn-remove-char flex-shrink-0"
                     data-pk="{{ info.owner.pk }}"><i class="fas fa-trash"></i></button>
           </div>
@@ -146,27 +147,34 @@
 <script>
 (function () {
   "use strict";
-  document.querySelectorAll(".btn-share-char").forEach(btn => btn.addEventListener("click", function () {
-    const pk = this.dataset.pk;
-    const btn = this;
-    fetchPost("{% url 'aa_pi_tracker:toggle_share_character' %}", {owner_pk: pk}).then(data => {
-      if (data.ok) {
-        btn.classList.toggle("btn-success", data.shared);
-        btn.classList.toggle("btn-outline-secondary", !data.shared);
-        btn.title = data.shared ? "Shared with Corp — click to unshare" : "Share with Corp";
-      }
-    }).catch(() => {});
-  }));
+  document.querySelectorAll(".btn-share-char").forEach(function (shareBtn) {
+    shareBtn.addEventListener("click", function () {
+      const pk = shareBtn.dataset.pk;
+      shareBtn.disabled = true;
+      piPost("{% url 'aa_pi_tracker:toggle_share_character' %}", {owner_pk: pk}).then(function (data) {
+        shareBtn.disabled = false;
+        if (data.ok) {
+          shareBtn.classList.toggle("btn-success", data.shared);
+          shareBtn.classList.toggle("btn-outline-secondary", !data.shared);
+          shareBtn.title = data.shared
+            ? "{% trans 'Shared with Corp — click to unshare' %}"
+            : "{% trans 'Share with Corp' %}";
+        } else {
+          console.warn("toggle_share_character failed:", data);
+        }
+      }).catch(function (err) {
+        shareBtn.disabled = false;
+        console.error("toggle_share_character error:", err);
+      });
+    });
+  });
   document.querySelectorAll(".btn-remove-char").forEach(btn => btn.addEventListener("click", function () {
-    if (!confirm("Remove this character?")) return;
-    fetchPost("{% url 'aa_pi_tracker:remove_character' %}", {owner_pk: this.dataset.pk}).then(() => location.reload());
+    if (!confirm("{% trans 'Remove this character?' %}")) return;
+    piPost("{% url 'aa_pi_tracker:remove_character' %}", {owner_pk: this.dataset.pk}).then(() => location.reload());
   }));
-  document.getElementById("btn-sync")?.addEventListener("click", function () {
-    this.disabled = true; this.innerHTML = '<i class="fas fa-sync fa-spin"></i> Syncing…';
-    fetchPost("{% url 'aa_pi_tracker:trigger_sync' %}", {}).then(() => {
-      this.innerHTML = '<i class="fas fa-check"></i> Queued';
-      setTimeout(() => {this.disabled = false; this.innerHTML = '<i class="fas fa-sync"></i> Sync All';}, 5000);
-    }).catch(() => { this.disabled = false; this.innerHTML = '<i class="fas fa-sync"></i> Sync All'; });
+  bindSyncButton({
+    url: "{% url 'aa_pi_tracker:trigger_sync' %}",
+    busy: "{% trans 'Syncing…' %}", done: "{% trans 'Queued' %}",
   });
 }());
 </script>

@@ -1,12 +1,23 @@
 import math
 from collections import defaultdict
 
-from .planet_resources import PLANET_TYPE_SLUG_TO_P0, POCO_BASE_COSTS, TIER_VOLUMES, P0_TYPES
+from .planet_resources import PLANET_TYPE_SLUG_TO_P0, TIER_VOLUMES, P0_TYPES, get_poco_base_costs
 from .recipes import SCHEMATICS
 
 # Planet capacity limits (CCU5 null-sec standard)
+# 8 BIFs: hard limit from link throughput — 8 × 6000 P0/h × 0.005 m³ = 240 m³/h < 250 m³/h base link cap
 MAX_BIFS_PER_MINER_PLANET = 8    # Basic Industry Facilities per miner planet
-MAX_AIFS_PER_FACTORY_PLANET = 24  # Advanced Industry Facilities per factory planet
+MAX_AIFS_PER_FACTORY_PLANET = 24  # Advanced Industry Facilities per factory planet (CCU5)
+
+# Max AIFs per factory planet by CCU level.
+# Derived from PG budget: floor((CCU_PG − LP_700 − Storage_700) / AIF_700)
+# with a conservative deduction for link costs at typical null-sec planet radii.
+_CCU_TO_MAX_AIFS: dict[int, int] = {0: 6, 1: 10, 2: 15, 3: 19, 4: 22, 5: 24}
+
+
+def max_aifs_for_ccu(ccu_level: int) -> int:
+    """Max Advanced Industry Facilities per factory planet for a given CCU level."""
+    return _CCU_TO_MAX_AIFS.get(max(0, min(5, int(ccu_level))), 24)
 
 # P0 resource name → P1 schematic name (derived from tier-1 recipes)
 P0_TO_P1: dict[str, str] = {
@@ -14,6 +25,16 @@ P0_TO_P1: dict[str, str] = {
     for name, s in SCHEMATICS.items()
     if s["tier"] == 1
 }
+
+# P0 consumed per P1 factory-hour (3000 P0 → 20 P1 per 30-min cycle = 6000 P0/h)
+# and P1 produced per P1 factory-hour (20 × 2 cycles = 40 P1/h).
+P0_PER_P1_FACTORY_H = 6000.0
+P1_PER_P1_FACTORY_H = 40.0
+
+
+def p0_rate_to_p1_rate(p0_per_hour: float) -> float:
+    """How much P1/h a given P0 extraction rate (units/h) can sustain."""
+    return p0_per_hour / P0_PER_P1_FACTORY_H * P1_PER_P1_FACTORY_H
 
 
 def output_per_hour(schematic_name: str) -> float:
@@ -66,38 +87,41 @@ def get_item_volume(type_name: str) -> float:
     return TIER_VOLUMES.get(get_item_tier(type_name), 1.0)
 
 
-def production_plan(target_schematic: str) -> dict:
+def production_plan(target_schematic: str, qty_per_hour: int = 1, max_aifs_per_planet: int | None = None) -> dict:
     """
-    Optimal production plan for a target schematic at full 1× output rate.
+    Optimal production plan for a target schematic at ``qty_per_hour``× output rate.
 
-    Each miner planet runs MAX_BIFS_PER_MINER_PLANET BIFs (CCU5 null-sec standard).
-    Each factory planet holds max MAX_AIFS_PER_FACTORY_PLANET AIFs (conservative CCU5 budget).
+    The qty factor is applied to the continuous output *before* any rounding, so
+    integer counts (miners, AIFs, HTPPs, factory planets) are ceiled exactly once.
+    Scaling already-ceiled 1× counts afterwards would over-estimate the plan.
+
+    Each miner planet runs MAX_BIFS_PER_MINER_PLANET BIFs (hard limit: link throughput).
+    Each factory planet holds max ``max_aifs_per_planet`` AIFs; defaults to CCU5 capacity
+    (MAX_AIFS_PER_FACTORY_PLANET). Pass the result of ``max_aifs_for_ccu(char_ccu)`` for
+    skill-aware planning.
 
     Returns:
-      miners_per_p0:   {p0_name: count}   — miner planets per P0 resource type
-      total_miners:    int
-      aifs:            {product_name: count} — Advanced Industry Facilities (tier 2/3, ceiled)
-      htpps:           {product_name: count} — High-Tech Production Plants (tier 4, ceiled)
-      factories:       dict — full expand_production result incl. P1 BIF counts
-      p0_rates:        dict — P0/h demand at 1× rate
-      total_aifs:      int  — sum of aifs (AIF-only, excl. HTPP)
-      factory_planets: int  — ceil(total_aifs / MAX_AIFS_PER_FACTORY_PLANET)
-      total_planets:   int
-      output_per_hour: float
-      output_per_day:  float
+      miners_per_p0:       {p0_name: count}   — miner planets per P0 resource type
+      total_miners:        int
+      aifs:                {product_name: count} — Advanced Industry Facilities (tier 2/3, ceiled)
+      htpps:               {product_name: count} — High-Tech Production Plants (tier 4, ceiled)
+      factories:           dict — full expand_production result incl. P1 BIF counts
+      p0_rates:            dict — P0/h demand at 1× rate
+      total_aifs:          int  — sum of aifs (AIF-only, excl. HTPP)
+      factory_planets:     int  — ceil(total_aifs / max_aifs_per_planet) + P4 planet if needed
+      max_aifs_per_planet: int  — effective AIF capacity used for this plan
+      total_planets:       int
+      output_per_hour:     float
+      output_per_day:      float
     """
-    out_h = output_per_hour(target_schematic)
+    if max_aifs_per_planet is None:
+        max_aifs_per_planet = MAX_AIFS_PER_FACTORY_PLANET
+    out_h = output_per_hour(target_schematic) * max(1, int(qty_per_hour))
     factories, p0_rates = expand_production([(target_schematic, out_h)])
-
-    p0_to_p1 = {
-        next(iter(s["inputs"])): name
-        for name, s in SCHEMATICS.items()
-        if s["tier"] == 1
-    }
 
     miners_per_p0 = {}
     for p0_name in p0_rates:
-        p1_name = p0_to_p1.get(p0_name)
+        p1_name = P0_TO_P1.get(p0_name)
         bifs = factories.get(p1_name, 0) if p1_name else 0
         miners_per_p0[p0_name] = max(1, math.ceil(bifs / MAX_BIFS_PER_MINER_PLANET))
 
@@ -116,7 +140,9 @@ def production_plan(target_schematic: str) -> dict:
 
     total_aifs = sum(aifs.values())
     # P1: BIFs on miner planet, no factory planet. P2+: at least 1 factory planet.
-    factory_planets = max(1, math.ceil(total_aifs / MAX_AIFS_PER_FACTORY_PLANET)) if (aifs or htpps) else 0
+    # P4 products: the last factory planet is designated P4 (Barren/Temperate only) and
+    # hosts the remaining AIFs + HTPPs — no separate P4 planet is added, keeping slot count minimal.
+    factory_planets = max(1, math.ceil(total_aifs / max_aifs_per_planet)) if (aifs or htpps) else 0
     total_miners = sum(miners_per_p0.values())
 
     return {
@@ -128,6 +154,7 @@ def production_plan(target_schematic: str) -> dict:
         "p0_rates": p0_rates,
         "total_aifs": total_aifs,
         "factory_planets": factory_planets,
+        "max_aifs_per_planet": max_aifs_per_planet,
         "total_planets": total_miners + factory_planets,
         "output_per_hour": out_h,
         "output_per_day": round(out_h * 24, 2),
@@ -151,6 +178,7 @@ def calculate_poco_tax(plan: dict, tier: int, tax_rate: float) -> float:
     if tax_rate <= 0:
         return 0.0
     rate = tax_rate / 100.0
+    base = get_poco_base_costs()
 
     # P1 crossing: all P1 leaves miner planets and enters factory planets via POCO.
     # Applies for tier > 1 (when P1 is an intermediate, not the final product itself).
@@ -161,7 +189,7 @@ def calculate_poco_tax(plan: dict, tier: int, tax_rate: float) -> float:
             for name, count in plan["factories"].items()
             if SCHEMATICS.get(name, {}).get("tier") == 1
         )
-        p1_tax = p1_per_day * POCO_BASE_COSTS[1] * 1.5 * rate
+        p1_tax = p1_per_day * base[1] * 1.5 * rate
 
     # P3 crossing: when factory_planets > 1 for P4 chains, all P3 flows from
     # factory planet(s) to the factory_p4 planet via POCO.
@@ -172,10 +200,10 @@ def calculate_poco_tax(plan: dict, tier: int, tax_rate: float) -> float:
             for name, count in plan["factories"].items()
             if SCHEMATICS.get(name, {}).get("tier") == 3
         )
-        p3_tax = p3_per_day * POCO_BASE_COSTS[3] * 1.5 * rate
+        p3_tax = p3_per_day * base[3] * 1.5 * rate
 
     # Final product export: the finished goods leave the factory/miner planet.
-    final_export_tax = plan["output_per_day"] * POCO_BASE_COSTS[tier] * rate
+    final_export_tax = plan["output_per_day"] * base[tier] * rate
 
     return round(p1_tax + p3_tax + final_export_tax, 0)
 

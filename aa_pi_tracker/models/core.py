@@ -36,6 +36,7 @@ class PiOwner(models.Model):
     shared_with_corp = models.BooleanField(default=False)
 
     class Meta:
+        default_permissions = ()
         ordering = ["character__character_name"]
 
     def __str__(self):

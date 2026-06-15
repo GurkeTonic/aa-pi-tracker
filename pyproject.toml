@@ -34,8 +34,14 @@ dynamic = [
 ]
 dependencies = [
     "allianceauth>=5",
-    "django-esi>=4.0.0",
+    "django-esi>=9.0.0",
+    "django-eveonline-sde",
 ]
+
+[project.urls]
+Homepage = "https://github.com/GurkeTonic/aa-pi-tracker"
+Changelog = "https://github.com/GurkeTonic/aa-pi-tracker/blob/main/CHANGELOG.md"
+"Issue Tracker" = "https://github.com/GurkeTonic/aa-pi-tracker/issues"
 
 [project.entry-points."allianceauth.app"]
 aa_pi_tracker = "aa_pi_tracker.apps:AaPiTrackerConfig"
@@ -44,4 +50,6 @@ aa_pi_tracker = "aa_pi_tracker.apps:AaPiTrackerConfig"
 version.path = "aa_pi_tracker/__init__.py"
 build.include = [
     "/aa_pi_tracker",
+    "/aa_pi_tracker/locale/**/*.po",
+    "/aa_pi_tracker/locale/**/*.mo",
 ]

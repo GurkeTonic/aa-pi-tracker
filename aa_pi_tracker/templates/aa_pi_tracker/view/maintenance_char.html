@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n pi_filters evelinks %}
 
 {% block page_title %}{% blocktrans with name=char_name %}Maintenance — {{ name }}{% endblocktrans %}{% endblock %}
@@ -54,8 +54,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
-{% include "framework/header/page-header.html" with title="Maintenance" %}
+{% block pi_content %}
 <div class="container-fluid mt-3" style="max-width:860px">
 
   <!-- Header -->
@@ -102,10 +101,10 @@
   <!-- ── Step 1: Reset Extractors ── -->
   <div id="step-1">
     {% if not step1_planets %}
-    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No miner planets with extractors assigned to this character.</div>
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>{% trans "No miner planets with extractors assigned to this character." %}</div>
     {% else %}
     <h6 class="text-uppercase text-muted small mb-3">
-      <i class="fas fa-bolt me-1 text-warning"></i>Extractor Planets
+      <i class="fas fa-bolt me-1 text-warning"></i>{% trans "Extractor Planets" %}
       <span class="badge bg-secondary ms-1">{{ step1_planets|length }}</span>
     </h6>
     {% for planet in step1_planets %}
@@ -145,7 +144,7 @@
             </div>
           </div>
           {% empty %}
-          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>No extractor data — sync ESI first.</div>
+          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>{% trans "No extractor data — sync ESI first." %}</div>
           {% endfor %}
         </div>
       </div>
@@ -155,10 +154,10 @@
 
     <div class="d-flex justify-content-end gap-2 mt-3">
       <button class="btn btn-outline-secondary btn-sm" id="btn-skip-1">
-        <i class="fas fa-forward me-1"></i>Skip
+        <i class="fas fa-forward me-1"></i>{% trans "Skip" %}
       </button>
       <button class="btn btn-primary btn-sm" id="btn-next-1">
-        <i class="fas fa-box me-1"></i>Next: Pickup P1
+        <i class="fas fa-box me-1"></i>{% trans "Next: Pickup P1" %}
       </button>
     </div>
   </div>
@@ -166,10 +165,10 @@
   <!-- ── Step 2: Pickup P1 ── -->
   <div id="step-2" class="d-none">
     {% if not step2_planets %}
-    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No miner planets found for this character.</div>
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>{% trans "No miner planets found for this character." %}</div>
     {% else %}
     <h6 class="text-uppercase text-muted small mb-3">
-      <i class="fas fa-box me-1 text-info"></i>Pickup Locations
+      <i class="fas fa-box me-1 text-info"></i>{% trans "Pickup Locations" %}
       <span class="badge bg-secondary ms-1">{{ step2_planets|length }}</span>
     </h6>
     {% for planet in step2_planets %}
@@ -197,7 +196,7 @@
               {% else %}bg-danger{% endif %}">P{{ item.tier }}</span>
             <span class="fw-semibold">{{ item.name }}</span>
             {% if item.qty > 0 %}
-            <span class="text-success">{{ item.qty|floatformat:0 }} in storage</span>
+            <span class="text-success">{% blocktrans with qty=item.qty|floatformat:0 %}{{ qty }} in storage{% endblocktrans %}</span>
             {% else %}
             <span class="text-muted">—</span>
             {% endif %}
@@ -206,7 +205,7 @@
             {% endif %}
           </div>
           {% empty %}
-          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>No storage data — sync ESI first.</div>
+          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>{% trans "No storage data — sync ESI first." %}</div>
           {% endfor %}
 
           <!-- Destinations -->
@@ -215,11 +214,11 @@
             {% for dest in planet.dests %}
             <div class="small mb-1">
               <i class="fas fa-arrow-right me-1 text-muted"></i>
-              <span class="text-muted">Deliver to:</span>
+              <span class="text-muted">{% trans "Deliver to:" %}</span>
               <strong class="ms-1">{{ dest.char_name }}</strong>
               <span class="text-muted ms-1">— {{ dest.planet_name }}</span>
               {% if dest.is_cross_char %}
-              <span class="cross-char-badge ms-1"><i class="fas fa-exchange-alt me-1"></i>cross-char</span>
+              <span class="cross-char-badge ms-1"><i class="fas fa-exchange-alt me-1"></i>{% trans "cross-char" %}</span>
               {% endif %}
             </div>
             {% endfor %}
@@ -233,14 +232,14 @@
 
     <div class="d-flex justify-content-between mt-3">
       <button class="btn btn-outline-secondary btn-sm" id="btn-prev-2">
-        <i class="fas fa-arrow-left me-1"></i>Back
+        <i class="fas fa-arrow-left me-1"></i>{% trans "Back" %}
       </button>
       <div class="d-flex gap-2">
         <button class="btn btn-outline-secondary btn-sm" id="btn-skip-2">
-          <i class="fas fa-forward me-1"></i>Skip
+          <i class="fas fa-forward me-1"></i>{% trans "Skip" %}
         </button>
         <button class="btn btn-primary btn-sm" id="btn-next-2">
-          <i class="fas fa-truck me-1"></i>Next: Load Factories
+          <i class="fas fa-truck me-1"></i>{% trans "Next: Load Factories" %}
         </button>
       </div>
     </div>
@@ -249,10 +248,10 @@
   <!-- ── Step 3: Load Factories ── -->
   <div id="step-3" class="d-none">
     {% if not step3_planets %}
-    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No factory planets assigned to this character.</div>
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>{% trans "No factory planets assigned to this character." %}</div>
     {% else %}
     <h6 class="text-uppercase text-muted small mb-3">
-      <i class="fas fa-industry me-1 text-primary"></i>Factory Planets
+      <i class="fas fa-industry me-1 text-primary"></i>{% trans "Factory Planets" %}
       <span class="badge bg-secondary ms-1">{{ step3_planets|length }}</span>
     </h6>
     {% for planet in step3_planets %}
@@ -269,7 +268,7 @@
             </span>
             {% if planet.system %}<span class="text-muted small">{{ planet.system }}</span>{% endif %}
             <span class="badge pi-text-xs {% if planet.role == 'factory_p4' %}bg-warning text-dark{% else %}bg-primary{% endif %}">
-              {% if planet.role == "factory_p4" %}P4{% else %}Factory{% endif %}
+              {% if planet.role == "factory_p4" %}P4{% else %}{% trans "Factory" %}{% endif %}
             </span>
           </div>
 
@@ -284,18 +283,18 @@
             {% for src in item.sources %}
             <div class="small ms-3 mb-1 text-muted">
               <i class="fas fa-arrow-right me-1"></i>
-              <span class="text-muted">from:</span>
+              <span class="text-muted">{% trans "from:" %}</span>
               <strong class="ms-1 {% if src.is_cross_char %}text-warning{% else %}text-body{% endif %}">{{ src.char_name }}</strong>
               <span class="ms-1">— {{ src.planet_name }}</span>
               <span class="ms-1">({{ src.weekly_qty|floatformat:0 }}/wk)</span>
               {% if src.is_cross_char %}
-              <span class="cross-char-badge ms-1"><i class="fas fa-exchange-alt me-1"></i>cross-char</span>
+              <span class="cross-char-badge ms-1"><i class="fas fa-exchange-alt me-1"></i>{% trans "cross-char" %}</span>
               {% endif %}
             </div>
             {% endfor %}
           </div>
           {% empty %}
-          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>No routing data — add objectives and miner planets to this project.</div>
+          <div class="text-muted small"><i class="fas fa-info-circle me-1"></i>{% trans "No routing data — add objectives and miner planets to this project." %}</div>
           {% endfor %}
         </div>
       </div>
@@ -305,10 +304,10 @@
 
     <div class="d-flex justify-content-between mt-3">
       <button class="btn btn-outline-secondary btn-sm" id="btn-prev-3">
-        <i class="fas fa-arrow-left me-1"></i>Back
+        <i class="fas fa-arrow-left me-1"></i>{% trans "Back" %}
       </button>
       <button class="btn btn-success btn-sm" id="btn-finish">
-        <i class="fas fa-check me-1"></i>Done — All Complete
+        <i class="fas fa-check me-1"></i>{% trans "Done — All Complete" %}
       </button>
     </div>
   </div>
@@ -316,13 +315,13 @@
   <!-- Done overlay -->
   <div id="maint-done" class="d-none text-center py-5">
     <div class="mb-3" style="font-size:3rem">✅</div>
-    <h5 class="fw-bold mb-1">Maintenance Complete</h5>
-    <div class="text-muted mb-4">Good job, {{ char_name }}. All steps done for today.</div>
+    <h5 class="fw-bold mb-1">{% trans "Maintenance Complete" %}</h5>
+    <div class="text-muted mb-4">{% blocktrans with name=char_name %}Good job, {{ name }}. All steps done for today.{% endblocktrans %}</div>
     <a href="{% url 'aa_pi_tracker:maintenance_page' project.pk %}" class="btn btn-outline-primary me-2">
-      <i class="fas fa-arrow-left me-1"></i>Back to Overview
+      <i class="fas fa-arrow-left me-1"></i>{% trans "Back to Overview" %}
     </a>
     <button class="btn btn-outline-secondary btn-sm" id="btn-reset-maint">
-      <i class="fas fa-redo me-1"></i>Reset
+      <i class="fas fa-redo me-1"></i>{% trans "Reset" %}
     </button>
   </div>
 
@@ -361,7 +360,7 @@
     // Debounce server saves by 500ms to avoid hammering on rapid toggles
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(() => {
-      fetchPostJson(SAVE_URL, {
+      piPostJson(SAVE_URL, {
         step:   state.step,
         done:   state.done,
         checks: {s1: state.s1, s2: state.s2, s3: state.s3},

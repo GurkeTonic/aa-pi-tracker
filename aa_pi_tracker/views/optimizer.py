@@ -157,10 +157,9 @@ def optimizer_page(request):
 
 @login_required
 @permission_required("aa_pi_tracker.view_pi")
+@require_POST
 def optimizer_analyze_json(request):
     from ..optimizer import analyze_max_isk, analyze_target
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=405)
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -178,14 +177,23 @@ def optimizer_analyze_json(request):
 
     qty_per_hour = max(1, min(50, int(data.get("qty_per_hour", 1))))
     corp_mode = bool(data.get("corp_mode")) and request.user.has_perm("aa_pi_tracker.manage_corp_pi")
-    owners = get_corp_owners(request.user) if corp_mode else None
+    if corp_mode:
+        owners = get_corp_owners(request.user)
+        if not owners:
+            return JsonResponse({"ok": False, "error": "Corp mode: no corp members are sharing PI yet."})
+    else:
+        owners = None
 
     mode = data.get("mode")
     if mode == "target":
         target = data.get("target", "").strip()
         if not target:
             return JsonResponse({"error": "No target specified"}, status=400)
-        result = analyze_target(request.user, target, system_id, max_jumps, tax_rate, qty_per_hour, owners=owners)
+        try:
+            p4_char_id = int(data["p4_char_id"]) if data.get("p4_char_id") else None
+        except (ValueError, TypeError):
+            p4_char_id = None
+        result = analyze_target(request.user, target, system_id, max_jumps, tax_rate, qty_per_hour, owners=owners, p4_char_id=p4_char_id)
     elif mode == "max_isk":
         result = analyze_max_isk(request.user, system_id, max_jumps, tax_rate, qty_per_hour, owners=owners)
     else:
@@ -196,10 +204,9 @@ def optimizer_analyze_json(request):
 
 @login_required
 @permission_required("aa_pi_tracker.view_pi")
+@require_POST
 def optimizer_create_project(request):
     from ..optimizer import create_project as _build_project
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=405)
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -226,10 +233,9 @@ def optimizer_create_project(request):
 
 @login_required
 @permission_required("aa_pi_tracker.manage_corp_pi")
+@require_POST
 def optimizer_create_corp_project(request):
     from ..optimizer import create_project as _build_project
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=405)
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):

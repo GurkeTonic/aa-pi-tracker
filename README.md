@@ -14,7 +14,7 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to track
 - **Extractors** — Cross-character overview of all active extractors with expiry time, cycle time, output rate (units/h), and a progress bar showing time remaining
 - **Planets** — Per-planet view with planet type, upgrade level, active extractors and factories, and project assignment
 - **Projects** — Define a production target (e.g. "10 Broadcast Nodes/h"), automatically expand the full P1→P4 factory and extraction chain, and track actual vs. required factories and extraction rates for each assigned planet
-- **No SDE dependency** — All PI production data (P0 resources, P1–P4 recipes, factory cycle times) is bundled as static Python data; no external database required
+- **Bundled production data** — PI production data (P0 resources, P1–P4 recipes, factory cycle times) is bundled as static Python data, so no SDE lookup is needed for the production chain itself. Planet/system/region names, the system search and the optimizer routing do use the EVE SDE (see Requirements).
 - Celery Beat task registers automatically on startup — no `CELERYBEAT_SCHEDULE` entry in `local.py` required
 
 ---
@@ -26,14 +26,18 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to track
 | Alliance Auth | >= 5.0 |
 | Python | >= 3.10 |
 | django-esi | >= 4.0 |
+| django-eveonline-sde (`eve_sde`) | latest |
 
-### ESI Scope
+`django-eveonline-sde` provides the EVE Static Data Export as Django models. PI Tracker uses it for planet/system/region names, the system search and the optimizer's jump routing. It must be installed, added to `INSTALLED_APPS` and its SDE data loaded.
+
+### ESI Scopes
 
 | Scope | Used for |
 |---|---|
 | `esi-planets.manage_planets.v1` | Planet list and pin details (extractors, factories) per character |
+| `esi-skills.read_skills.v1` | Character skill levels (Interplanetary Consolidation, Command Center Upgrades, Planetology, Remote Sensing) |
 
-> **Note:** Despite the scope name, only read endpoints are used — no modifications are made to in-game PI colonies.
+> **Note:** Despite the `manage_planets` scope name, only read endpoints are used — no modifications are made to in-game PI colonies.
 
 ---
 
@@ -46,8 +50,13 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to track
 **Step 2 — Add to `INSTALLED_APPS` in `local.py`**
 
     INSTALLED_APPS += [
+        'eve_sde',
         'aa_pi_tracker',
     ]
+
+Then load the SDE data once (see the django-eveonline-sde documentation), e.g.:
+
+    python manage.py eve_sde_load
 
 **Step 3 — Add ESI contact e-mail to `local.py`**
 
@@ -82,6 +91,7 @@ Multiple characters per user are supported. Each character is synced independent
 | Permission | Description |
 |---|---|
 | `aa_pi_tracker.view_pi` | Access to all PI Tracker tabs |
+| `aa_pi_tracker.manage_corp_pi` | Manage corp PI projects (corp-wide planning) |
 
 Assign via **Django Admin → Auth → Groups** or per state.
 
@@ -93,7 +103,8 @@ Add to `myauth/settings/local.py` to override defaults:
 
 | Setting | Default | Description |
 |---|---|---|
-| `AA_PI_TRACKER_SYNC_INTERVAL` | `60` | Sync interval in minutes. The beat schedule uses `apply_offset` to spread load. Override the entire schedule entry in `CELERYBEAT_SCHEDULE` if needed. |
+| `AA_PI_TRACKER_SYNC_INTERVAL` | `10` | PI data sync interval in minutes. The beat schedule uses `apply_offset` to spread load. |
+| `AA_PI_TRACKER_PRICE_INTERVAL` | `30` | Market price (Fuzzwork) sync interval in minutes. |
 | `ESI_USER_CONTACT_EMAIL` | — | **Required.** Included in every ESI request as part of the User-Agent. |
 
 ---
@@ -112,8 +123,8 @@ Add to `myauth/settings/local.py` to override defaults:
 
 ## Technical Notes
 
-- PI production chain data (recipes, tier levels, cycle times, input quantities) is hardcoded in `aa_pi_tracker/schematics.py` based on in-game values — no EVE SDE installation required
-- Unknown type IDs fall back to ESI (`/v3/universe/types/{id}`) with a 24-hour cache; unknown schematic IDs fall back to `/v1/universe/schematics/{id}`
+- PI production chain data (recipes, tier levels, cycle times, input quantities) is bundled as static Python data in `aa_pi_tracker/pi_data/` based on in-game values
+- Item, planet and solar-system names are resolved from the EVE SDE (`eve_sde` models); items not covered by the bundled P0 data fall back to an SDE name lookup
 - ESI responses are cached respecting the `Expires` header; minimum TTL is 60 seconds
 
 ---

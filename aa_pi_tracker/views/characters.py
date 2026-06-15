@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from esi.decorators import token_required
 
@@ -67,6 +68,7 @@ def trigger_price_sync(request):
 
 @login_required
 @permission_required("aa_pi_tracker.view_pi")
+@ensure_csrf_cookie
 def characters_page(request):
     owners = get_owners(request.user)
     owners_info = [
@@ -91,6 +93,7 @@ def characters_page(request):
     ctx = {
         "active_page": "characters",
         "owners_info": owners_info,
+        "has_corp_perm": request.user.has_perm("aa_pi_tracker.manage_corp_pi"),
         **nav_data(request, owners),
     }
     return render(request, "aa_pi_tracker/view/characters.html", ctx)

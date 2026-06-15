@@ -1,7 +1,6 @@
 from django.contrib import admin
 
 from .models import (
-    General,
     PiExtractorPin,
     PiFactoryPin,
     PiMarketPrice,
@@ -13,11 +12,6 @@ from .models import (
     PiStorageItem,
     PiUserSettings,
 )
-
-
-@admin.register(General)
-class GeneralAdmin(admin.ModelAdmin):
-    pass
 
 
 @admin.register(PiOwner)

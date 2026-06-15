@@ -12,7 +12,7 @@ class PiTrackerMenuItem(MenuItemHook):
             _("PI Tracker"),
             "fas fa-globe fa-fw",
             "aa_pi_tracker:index",
-            order=1100,
+            order=9999,
             navactive=["aa_pi_tracker:"],
         )
 

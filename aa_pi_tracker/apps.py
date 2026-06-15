@@ -38,3 +38,23 @@ class AaPiTrackerConfig(AppConfig):
                 "apply_offset": True,
             },
         )
+
+        # Extractor-expiry in-app notifications — hourly
+        settings.CELERYBEAT_SCHEDULE.setdefault(
+            "aa_pi_tracker.tasks.check_extractor_expiry",
+            {
+                "task": "aa_pi_tracker.tasks.check_extractor_expiry",
+                "schedule": crontab(minute=0),
+                "apply_offset": True,
+            },
+        )
+
+        # Maintenance-log retention cleanup — daily at 03:00
+        settings.CELERYBEAT_SCHEDULE.setdefault(
+            "aa_pi_tracker.tasks.purge_old_maintenance_logs",
+            {
+                "task": "aa_pi_tracker.tasks.purge_old_maintenance_logs",
+                "schedule": crontab(minute=15, hour=3),
+                "apply_offset": True,
+            },
+        )

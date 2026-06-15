@@ -1,6 +1,7 @@
 from django.db.models import Count, Prefetch
 
 from ..models import PiOwner, PiPlanet, PiProjectPlanet
+from ..pi_data import max_aifs_for_ccu
 
 
 def get_char_slots(user=None, *, owners=None):
@@ -43,6 +44,7 @@ def get_char_slots(user=None, *, owners=None):
         free_slots = max(0, max_p - locked_count)
         already_planned = planned_per_char.get(owner.character.character_id, 0)
         new_slots = max(0, free_slots - len(free_colonized) - already_planned)
+        ccu = owner.command_center_upgrades or 0
         result.append({
             "owner": owner,
             "char_name": owner.character.character_name,
@@ -52,6 +54,8 @@ def get_char_slots(user=None, *, owners=None):
             "free_slots": free_slots,
             "free_colonized": free_colonized,
             "new_slots": new_slots,
+            "command_center_upgrades": ccu,
+            "max_aifs": max_aifs_for_ccu(ccu),
         })
     return result
 
@@ -71,6 +75,7 @@ def get_planet_pools(user=None, *, owners=None):
         all_free.extend(infos)
         if infos or cs["new_slots"] > 0:
             by_char[cs["char_name"]] = {
+                "char_id": cs["char_id"],
                 "planets": infos,
                 "new_slots": cs["new_slots"],
                 "free_slots": cs["free_slots"],

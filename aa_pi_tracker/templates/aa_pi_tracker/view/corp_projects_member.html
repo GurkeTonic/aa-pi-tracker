@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n evelinks %}
 
 {% block page_title %}{% trans "PI Tracker — Corp Projects" %}{% endblock %}
@@ -6,8 +6,7 @@
 
 {% block header_nav_collapse_left %}{% include "aa_pi_tracker/partials/_nav.html" %}{% endblock %}
 
-{% block content %}
-{% include "framework/header/page-header.html" with title="Corp Projects" %}
+{% block pi_content %}
 <div class="container-fluid mt-3">
 
   {% if member_projects %}
@@ -25,7 +24,7 @@
         <div class="card-body">
           {% if project.objectives.all %}
           <div class="mb-3">
-            <span class="small fw-semibold text-muted">Objectives</span>
+            <span class="small fw-semibold text-muted">{% trans "Objectives" %}</span>
             <div class="d-flex flex-wrap gap-1 mt-1">
               {% for obj in project.objectives.all %}
               <span class="badge bg-secondary pi-text-nav">
@@ -37,7 +36,7 @@
           {% endif %}
 
           <div class="mb-3">
-            <span class="small fw-semibold text-muted">Your Characters in this Project</span>
+            <span class="small fw-semibold text-muted">{% trans "Your Characters in this Project" %}</span>
             <div class="d-flex flex-wrap gap-1 mt-1">
               {% for p in project.participants.all %}
               <span class="badge bg-info text-dark pi-text-nav">
@@ -52,11 +51,11 @@
           <div class="d-flex gap-2 mt-auto">
             <a href="{% url 'aa_pi_tracker:buildout_page' project.pk %}"
                class="btn btn-sm btn-outline-info">
-              <i class="fas fa-hammer me-1"></i>Build-Out
+              <i class="fas fa-hammer me-1"></i>{% trans "Build-Out" %}
             </a>
             <a href="{% url 'aa_pi_tracker:maintenance_page' project.pk %}"
                class="btn btn-sm btn-outline-warning">
-              <i class="fas fa-tools me-1"></i>Maintenance
+              <i class="fas fa-tools me-1"></i>{% trans "Maintenance" %}
             </a>
           </div>
         </div>
@@ -67,9 +66,8 @@
   {% else %}
   <div class="alert alert-info">
     <i class="fas fa-info-circle me-2"></i>
-    You are not participating in any Corp Projects yet.
-    Share your characters on the <a href="{% url 'aa_pi_tracker:characters' %}">Characters</a> page
-    so a Corp Manager can add you to a project.
+    {% url 'aa_pi_tracker:characters' as chars_url %}
+    {% blocktrans %}You are not participating in any Corp Projects yet. Share your characters on the <a href="{{ chars_url }}">Characters</a> page so a Corp Manager can add you to a project.{% endblocktrans %}
   </div>
   {% endif %}
 </div>

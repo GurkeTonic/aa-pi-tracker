@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n pi_filters evelinks %}
 
 {% block page_title %}{% blocktrans with name=project.name %}Build-Out — {{ name }}{% endblocktrans %}{% endblock %}
@@ -21,8 +21,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
-{% include "framework/header/page-header.html" with title="Build-Out" %}
+{% block pi_content %}
 <div class="container-fluid mt-3">
 
   <!-- Header -->
@@ -33,15 +32,15 @@
     </a>
     <div>
       <h5 class="mb-0 fw-bold"><i class="fas fa-drafting-compass me-2 text-info"></i>{% trans "Build-Out Blueprint" %}</h5>
-      <div class="text-muted small">{{ project.name }} &nbsp;·&nbsp; {{ total_planets }} planet{{ total_planets|pluralize }} across {{ chars_data|length }} pilot{{ chars_data|length|pluralize }}</div>
+      <div class="text-muted small">{{ project.name }} &nbsp;·&nbsp; {% blocktrans count planets=total_planets with pilots=chars_data|length %}{{ planets }} planet across {{ pilots }} pilots{% plural %}{{ planets }} planets across {{ pilots }} pilots{% endblocktrans %}</div>
     </div>
   </div>
 
   {% if not chars_data %}
   <div class="alert alert-info">
     <i class="fas fa-info-circle me-2"></i>
-    No planets assigned to this project yet.
-    <a href="{% url 'aa_pi_tracker:projects' %}?project={{ project.pk }}">Add planets in the Plan tab.</a>
+    {% trans "No planets assigned to this project yet." %}
+    <a href="{% url 'aa_pi_tracker:projects' %}?project={{ project.pk }}">{% trans "Add planets in the Plan tab." %}</a>
   </div>
   {% else %}
 
@@ -90,9 +89,9 @@
                   </div>
                 </div>
                 <span class="badge planet-badge-{{ p.role }} text-uppercase ms-2 pi-text-xs" style="white-space:nowrap">
-                  {% if p.role == "miner" %}Miner
-                  {% elif p.role == "factory_p4" %}P4 Factory
-                  {% else %}Factory{% endif %}
+                  {% if p.role == "miner" %}{% trans "Miner" %}
+                  {% elif p.role == "factory_p4" %}{% trans "P4 Factory" %}
+                  {% else %}{% trans "Factory" %}{% endif %}
                 </span>
               </div>
 
@@ -102,13 +101,13 @@
               {% if p.role == "miner" %}
                 {% if p.extracts %}
                 <div class="small mb-1">
-                  <span class="text-muted">Extracts:</span>
+                  <span class="text-muted">{% trans "Extracts:" %}</span>
                   <strong class="ms-1">{{ p.extracts }}</strong>
                 </div>
                 {% endif %}
                 {% if p.produces %}
                 <div class="small mb-2">
-                  <span class="text-muted">Produces:</span>
+                  <span class="text-muted">{% trans "Produces:" %}</span>
                   <strong class="ms-1 text-info">{{ p.produces }}</strong>
                   <span class="text-muted">(P1)</span>
                 </div>
@@ -116,7 +115,7 @@
               {% else %}
                 {% if p.p1_inputs %}
                 <div class="small mb-2">
-                  <span class="text-muted d-block mb-1">P1 Inputs:</span>
+                  <span class="text-muted d-block mb-1">{% trans "P1 Inputs:" %}</span>
                   {% for inp in p.p1_inputs %}
                   <span class="badge bg-secondary me-1 mb-1 pi-text-sm">{{ inp }}</span>
                   {% endfor %}
@@ -154,27 +153,27 @@
               <hr class="my-2" style="opacity:.15">
 
               <!-- Layout -->
-              <div class="text-muted pi-text-md text-uppercase mb-1" style="letter-spacing:.04em">Layout</div>
+              <div class="text-muted pi-text-md text-uppercase mb-1" style="letter-spacing:.04em">{% trans "Layout" %}</div>
               <div class="d-flex flex-wrap">
                 <span class="layout-pin"><i class="fas fa-shield-alt text-warning pi-text-xs"></i> CCU {{ p.layout.ccu }}</span>
                 {% if p.layout.extractors %}
-                <span class="layout-pin"><i class="fas fa-circle-notch text-info pi-text-xs"></i> Extractor 1 (8 heads)</span>
+                <span class="layout-pin"><i class="fas fa-circle-notch text-info pi-text-xs"></i> {% trans "Extractor 1 (8 heads)" %}</span>
                 {% endif %}
                 {% if p.layout.bifs %}
                 <span class="layout-pin"><i class="fas fa-industry text-muted pi-text-xs"></i> {{ p.layout.bifs }}× BIF</span>
                 {% endif %}
                 {% if p.layout.htpps %}
-                <span class="layout-pin"><i class="fas fa-flask text-danger pi-text-xs"></i> {{ p.layout.htpps }}× High-Tech Plant</span>
+                <span class="layout-pin"><i class="fas fa-flask text-danger pi-text-xs"></i> {{ p.layout.htpps }}× {% trans "High-Tech Plant" %}</span>
                 {% endif %}
                 {% if p.layout.aifs %}
                 <span class="layout-pin"><i class="fas fa-cogs text-primary pi-text-xs"></i> {{ p.layout.aifs }}× AIF</span>
                 {% endif %}
-                <span class="layout-pin"><i class="fas fa-box text-success pi-text-xs"></i> Launchpad 1</span>
+                <span class="layout-pin"><i class="fas fa-box text-success pi-text-xs"></i> {% trans "Launchpad 1" %}</span>
               </div>
 
               {% if not p.is_colonized %}
               <div class="mt-2">
-                <span class="badge bg-warning text-dark pi-text-xs"><i class="fas fa-plus-circle me-1"></i>To Colonize</span>
+                <span class="badge bg-warning text-dark pi-text-xs"><i class="fas fa-plus-circle me-1"></i>{% trans "To Colonize" %}</span>
               </div>
               {% endif %}
 

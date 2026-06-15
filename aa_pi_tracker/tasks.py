@@ -1,19 +1,45 @@
+"""Celery tasks: PI data sync and market prices.
+
+ESI access goes through the django-esi OpenAPI client (see ``providers/esi.py``),
+which transparently handles caching, ETags, the floating-window rate limit, the
+global error limit, the User-Agent and the compatibility date. Planet, system
+and type names are resolved from the local EVE SDE (``eve_sde``) to avoid extra
+ESI calls. Market prices come from the third-party Fuzzwork API (not ESI).
+"""
+
+from decimal import Decimal, InvalidOperation
+
 import requests
 from celery import shared_task
 from django.core.cache import cache
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone as djtimezone
 
 from allianceauth.services.hooks import get_extension_logger
+from allianceauth.services.tasks import QueueOnce
+from esi.exceptions import ESIBucketLimitException, ESIErrorLimitException, HTTPNotModified
 
-from .models import PiExtractorPin, PiFactoryPin, PiMarketPrice, PiOwner, PiPlanet, PiStorageItem
+from .app_settings import (
+    AA_PI_TRACKER_EXPIRY_WARN_HOURS,
+    AA_PI_TRACKER_MAINT_LOG_RETENTION_DAYS,
+)
+from .models import (
+    PiExtractorPin,
+    PiFactoryPin,
+    PiMaintenanceLog,
+    PiMarketPrice,
+    PiOwner,
+    PiPlanet,
+    PiProjectPlanet,
+    PiStorageItem,
+)
 from .providers.esi import (
     SKILL_ADVANCED_PLANETOLOGY,
     SKILL_COMMAND_CENTER_UPGRADES,
     SKILL_INTERPLANETARY_CONSOLIDATION,
     SKILL_PLANETOLOGY,
     SKILL_REMOTE_SENSING,
-    esi_get_auth,
+    esi,
     fetch_pi_skills,
     get_skills_token,
     get_token,
@@ -26,6 +52,13 @@ logger = get_extension_logger(__name__)
 
 FUZZWORK_URL = "https://market.fuzzwork.co.uk/aggregates/"
 JITA_STATION_ID = 60003760
+
+# Transient ESI limits — let Celery retry with backoff instead of failing.
+ESI_RETRY = {
+    "autoretry_for": (ESIErrorLimitException, ESIBucketLimitException),
+    "retry_backoff": 30,
+    "retry_kwargs": {"max_retries": 3},
+}
 
 
 def _get_product_name(type_id: int, extra_names: dict | None = None) -> str:
@@ -64,7 +97,7 @@ def _populate_planet_location(planet_obj: PiPlanet) -> None:
 
 # ── PI data sync ───────────────────────────────────────────────────────────────
 
-@shared_task
+@shared_task(base=QueueOnce, once={"graceful": True})
 def sync_all_pi_data():
     try:
         for owner in PiOwner.objects.all():
@@ -73,7 +106,7 @@ def sync_all_pi_data():
         logger.exception("sync_all_pi_data: failed to fan out PI sync tasks")
 
 
-@shared_task
+@shared_task(base=QueueOnce, once={"graceful": True}, **ESI_RETRY)
 def sync_owner_pi_data(owner_pk: int):
     try:
         owner = PiOwner.objects.get(pk=owner_pk)
@@ -86,19 +119,26 @@ def sync_owner_pi_data(owner_pk: int):
         logger.warning("No valid token for PI owner %s", owner)
         return
 
+    # Planet list. A 304 means the colonies are unchanged since the last sync;
+    # the pin details only change when a colony is modified (which also bumps
+    # this list's last-modified), so we can safely skip the per-planet refresh.
+    planets_changed = True
+    planet_list = []
     try:
-        planet_list = esi_get_auth(f"/v1/characters/{char_id}/planets", token)
+        planet_list = esi.client.Planetary_Interaction.GetCharactersCharacterIdPlanets(
+            character_id=char_id, token=token
+        ).results()
+    except HTTPNotModified:
+        planets_changed = False
+    except (ESIErrorLimitException, ESIBucketLimitException):
+        raise
     except Exception as e:
         logger.error("Failed to fetch planets for %s: %s", owner, e)
         return
 
-    if not isinstance(planet_list, list):
-        logger.error("Unexpected planet list response for %s: %r", owner, planet_list)
-        return
-
+    # Skills live on a separate endpoint with its own cache; refresh regardless.
     owner.last_synced = djtimezone.now()
     owner_update_fields = ["last_synced"]
-
     skills_token = get_skills_token(char_id)
     if skills_token:
         skill_levels = fetch_pi_skills(char_id, skills_token)
@@ -118,17 +158,20 @@ def sync_owner_pi_data(owner_pk: int):
 
     owner.save(update_fields=owner_update_fields)
 
+    if not planets_changed:
+        return
+
     existing_ids = set(owner.planets.values_list("planet_id", flat=True))
 
     for p in planet_list:
-        planet_id = p["planet_id"]
+        planet_id = p.planet_id
         planet_obj, created = PiPlanet.objects.update_or_create(
             owner=owner,
             planet_id=planet_id,
             defaults={
-                "planet_type": p.get("planet_type", "barren"),
-                "upgrade_level": p.get("upgrade_level", 0),
-                "last_update": parse_dt(p.get("last_update")),
+                "planet_type": getattr(p, "planet_type", "barren") or "barren",
+                "upgrade_level": getattr(p, "upgrade_level", 0) or 0,
+                "last_update": parse_dt(getattr(p, "last_update", None)),
             },
         )
         existing_ids.discard(planet_id)
@@ -139,28 +182,90 @@ def sync_owner_pi_data(owner_pk: int):
     if existing_ids:
         owner.planets.filter(planet_id__in=existing_ids).delete()
 
+    _try_link_project_planets(owner)
+
+
+def _try_link_project_planets(owner: PiOwner) -> None:
+    """Auto-link planned PiProjectPlanet slots to newly synced PiPlanet objects.
+
+    Matches on planned_char_id + planned_planet_type + planned_system_name.
+    Only links when the match is unambiguous (exactly one candidate for that key).
+    Slots without a planned_system_name are skipped — the optimizer did not suggest
+    a specific system, so there is nothing to match against.
+    """
+    from collections import defaultdict
+
+    char_id = owner.character.character_id
+
+    unlinked = list(
+        PiProjectPlanet.objects.filter(
+            planet__isnull=True,
+            planned_char_id=char_id,
+            planned_system_name__gt="",
+        )
+    )
+    if not unlinked:
+        return
+
+    already_linked_ids = set(
+        PiProjectPlanet.objects.filter(planet__isnull=False)
+        .values_list("planet_id", flat=True)
+    )
+
+    candidates = [
+        p for p in owner.planets.all()
+        if p.pk not in already_linked_ids and p.solar_system_name
+    ]
+
+    by_type_system: dict = defaultdict(list)
+    for p in candidates:
+        by_type_system[(p.planet_type, p.solar_system_name)].append(p)
+
+    for pp in unlinked:
+        key = (pp.planned_planet_type, pp.planned_system_name)
+        matches = by_type_system.get(key, [])
+        if len(matches) == 1:
+            pp.planet = matches[0]
+            pp.save(update_fields=["planet"])
+            by_type_system[key] = []
+            logger.info(
+                "Auto-linked planned slot pk=%s (project=%s, role=%s) → planet %s",
+                pp.pk, pp.project_id, pp.role, matches[0],
+            )
+
 
 def _sync_planet_pins(planet: PiPlanet, char_id: int, token):
     try:
-        data = esi_get_auth(
-            f"/v3/characters/{char_id}/planets/{planet.planet_id}", token
-        )
+        data = esi.client.Planetary_Interaction.GetCharactersCharacterIdPlanetsPlanetId(
+            character_id=char_id, planet_id=planet.planet_id, token=token
+        ).result()
+    except HTTPNotModified:
+        return  # pins unchanged — keep what we have
+    except (ESIErrorLimitException, ESIBucketLimitException):
+        raise
     except Exception as e:
         logger.error("Failed to fetch pins for planet %s: %s", planet, e)
         return
 
-    pins = data.get("pins", []) if isinstance(data, dict) else []
+    pins = getattr(data, "pins", None) or []
+
+    # Preserve the expiry-notification dedup flag across the delete+recreate below.
+    # Keyed by (product, expiry_time): a still-running program keeps its flag, a
+    # newly installed program (different expiry_time) starts fresh (un-notified).
+    prev_notified = {
+        (e.product_type_id, e.expiry_time): e.notified_expiry
+        for e in planet.extractors.all()
+    }
 
     # Batch SDE lookup for all type_ids not in P0_TYPES
     unknown_ids = set()
     for pin in pins:
-        ext = pin.get("extractor_details")
-        if ext and ext.get("product_type_id"):
-            tid = ext["product_type_id"]
-            if tid not in P0_TYPES:
-                unknown_ids.add(tid)
-        for item in pin.get("contents", []):
-            tid = item.get("type_id")
+        ext = getattr(pin, "extractor_details", None)
+        product_type_id = getattr(ext, "product_type_id", None) if ext else None
+        if product_type_id and product_type_id not in P0_TYPES:
+            unknown_ids.add(product_type_id)
+        for item in getattr(pin, "contents", None) or []:
+            tid = getattr(item, "type_id", None)
             if tid and tid not in P0_TYPES:
                 unknown_ids.add(tid)
     sde_names: dict[int, str] = {}
@@ -176,22 +281,24 @@ def _sync_planet_pins(planet: PiPlanet, char_id: int, token):
     storage_totals: dict[int, int] = {}
 
     for pin in pins:
-        ext = pin.get("extractor_details")
-        schematic_id = pin.get("schematic_id")
+        ext = getattr(pin, "extractor_details", None)
+        product_type_id = getattr(ext, "product_type_id", None) if ext else None
+        schematic_id = getattr(pin, "schematic_id", None)
 
-        if ext and ext.get("product_type_id"):
-            product_type_id = ext["product_type_id"]
+        if product_type_id:
+            expiry = parse_dt(getattr(pin, "expiry_time", None))
             extractors.append(
                 PiExtractorPin(
                     planet=planet,
                     product_type_id=product_type_id,
                     product_name=_get_product_name(product_type_id, sde_names),
-                    cycle_time=ext.get("cycle_time", 1800),
-                    qty_per_cycle=ext.get("qty_per_cycle", 0),
-                    head_count=len(ext.get("heads", [])),
-                    expiry_time=parse_dt(pin.get("expiry_time")),
-                    install_time=parse_dt(pin.get("install_time")),
-                    last_cycle_start=parse_dt(pin.get("last_cycle_start")),
+                    cycle_time=getattr(ext, "cycle_time", 1800) or 1800,
+                    qty_per_cycle=getattr(ext, "qty_per_cycle", 0) or 0,
+                    head_count=len(getattr(ext, "heads", None) or []),
+                    expiry_time=expiry,
+                    install_time=parse_dt(getattr(pin, "install_time", None)),
+                    last_cycle_start=parse_dt(getattr(pin, "last_cycle_start", None)),
+                    notified_expiry=prev_notified.get((product_type_id, expiry), False),
                 )
             )
         elif schematic_id:
@@ -203,9 +310,9 @@ def _sync_planet_pins(planet: PiPlanet, char_id: int, token):
                 )
             )
 
-        for item in pin.get("contents", []):
-            tid = item.get("type_id")
-            amt = item.get("amount", 0)
+        for item in getattr(pin, "contents", None) or []:
+            tid = getattr(item, "type_id", None)
+            amt = getattr(item, "amount", 0) or 0
             if tid and amt:
                 storage_totals[tid] = storage_totals.get(tid, 0) + amt
 
@@ -232,7 +339,7 @@ def _sync_planet_pins(planet: PiPlanet, char_id: int, token):
 
 # ── Market price sync ──────────────────────────────────────────────────────────
 
-@shared_task
+@shared_task(base=QueueOnce, once={"graceful": True})
 def sync_market_prices():
     """Fetch Jita buy prices for all PI products from Fuzzwork market API."""
     cache_key = "pi_tracker_market_prices"
@@ -278,18 +385,89 @@ def sync_market_prices():
         if type_id not in type_map:
             continue
         name, tier = type_map[type_id]
-        jita_buy = float((prices.get("buy") or {}).get("max") or 0)
+        try:
+            jita_buy = Decimal(str((prices.get("buy") or {}).get("max") or 0)).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError):
+            jita_buy = Decimal("0")
         items_to_upsert.append(
             PiMarketPrice(type_id=type_id, type_name=name, tier=tier, jita_buy=jita_buy)
         )
 
     if items_to_upsert:
-        PiMarketPrice.objects.bulk_create(
-            items_to_upsert,
-            update_conflicts=True,
-            update_fields=["type_name", "tier", "jita_buy"],
-            unique_fields=["type_id"],
-        )
+        # AA runs on MySQL/MariaDB, which do the upsert but cannot name the
+        # conflict target — passing unique_fields there raises NotSupportedError.
+        # Set it only on backends that require it (e.g. SQLite in tests) so the
+        # bulk_create stays portable.
+        upsert_kwargs = {
+            "update_conflicts": True,
+            "update_fields": ["type_name", "tier", "jita_buy"],
+        }
+        if connection.features.supports_update_conflicts_with_target:
+            upsert_kwargs["unique_fields"] = ["type_id"]
+        PiMarketPrice.objects.bulk_create(items_to_upsert, **upsert_kwargs)
 
     cache.set(cache_key, True, timeout=1800)
     logger.info("PI market prices updated for %d products (Jita buy)", len(items_to_upsert))
+
+
+# ── Extractor expiry notifications ───────────────────────────────────────────────
+
+@shared_task(base=QueueOnce, once={"graceful": True})
+def check_extractor_expiry():
+    """Warn each owner in-app (AA notification bell) when an extractor program is
+    about to run dry. One notification per user, summarizing all their expiring
+    extractors. Each pin is flagged afterwards so it is not re-notified; the flag
+    survives a re-sync and resets only when a new program is installed
+    (see ``_sync_planet_pins``)."""
+    from collections import defaultdict
+    from datetime import timedelta
+
+    from allianceauth.notifications import notify
+
+    now = djtimezone.now()
+    threshold = now + timedelta(hours=AA_PI_TRACKER_EXPIRY_WARN_HOURS)
+    pins = list(
+        PiExtractorPin.objects.filter(
+            notified_expiry=False,
+            expiry_time__isnull=False,
+            expiry_time__lte=threshold,
+        ).select_related("planet__owner__user", "planet__owner__character")
+    )
+    if not pins:
+        return
+
+    by_user: dict = defaultdict(list)
+    for pin in pins:
+        owner = pin.planet.owner
+        user = getattr(owner, "user", None)
+        if user:
+            by_user[user].append(pin)
+
+    for user, user_pins in by_user.items():
+        lines = []
+        for p in sorted(user_pins, key=lambda x: x.expiry_time):
+            remaining = p.expiry_time - now
+            if remaining.total_seconds() <= 0:
+                when = "expired"
+            else:
+                hours = int(remaining.total_seconds() // 3600)
+                when = f"in {hours}h" if hours else "< 1h"
+            lines.append(f"• {p.planet.planet_name}: {p.product_name or 'Extractor'} ({when})")
+        title = f"PI: {len(user_pins)} extractor program(s) expiring soon"
+        notify(user, title, message="\n".join(lines), level="warning")
+
+    PiExtractorPin.objects.filter(pk__in=[p.pk for p in pins]).update(notified_expiry=True)
+
+
+# ── Maintenance log retention ────────────────────────────────────────────────────
+
+@shared_task(base=QueueOnce, once={"graceful": True})
+def purge_old_maintenance_logs():
+    """Delete PiMaintenanceLog rows older than the retention window so the daily
+    per-character progress table does not grow unbounded."""
+    from datetime import timedelta
+
+    cutoff = djtimezone.localdate() - timedelta(days=AA_PI_TRACKER_MAINT_LOG_RETENTION_DAYS)
+    deleted, _ = PiMaintenanceLog.objects.filter(date__lt=cutoff).delete()
+    if deleted:
+        logger.info("Purged %d maintenance log(s) older than %s", deleted, cutoff)

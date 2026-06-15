@@ -8,7 +8,7 @@ from django.utils import timezone
 from allianceauth.services.hooks import get_extension_logger
 
 from ..models import PiExtractorPin, PiFactoryPin, PiMarketPrice, PiOwner, PiPlanet, PiProject, PiStorageItem
-from ..pi_data import P0_TO_P1
+from ..pi_data import P0_TO_P1, p0_rate_to_p1_rate
 
 logger = get_extension_logger(__name__)
 
@@ -74,7 +74,7 @@ def get_owners(user, prefetch_planets=False):
 
 
 def load_prices() -> dict[str, float]:
-    return {p.type_name: p.jita_buy for p in PiMarketPrice.objects.all()}
+    return {p.type_name: float(p.jita_buy) for p in PiMarketPrice.objects.all()}
 
 
 def nav_data(request, owners=None) -> dict:
@@ -118,7 +118,7 @@ def get_corp_owners(user):
         )
         .select_related("character", "user")
         .prefetch_related(
-            Prefetch("planets", queryset=PiPlanet.objects.prefetch_related("extractors"))
+            Prefetch("planets", queryset=PiPlanet.objects.prefetch_related("extractors").order_by("planet_name"))
         )
     )
 
@@ -152,9 +152,9 @@ def compute_extractors(owners, prices: dict, now) -> list:
                     elapsed_s = (now - ext.install_time).total_seconds()
                     if total_s > 0:
                         progress = min(100, max(0, int(elapsed_s / total_s * 100)))
-                qty_h = ext.qty_per_hour
+                qty_h = ext.avg_per_hour
                 p1_name = P0_TO_P1.get(ext.product_name)
-                p1_rate = qty_h / 6_000.0 * 40.0
+                p1_rate = p0_rate_to_p1_rate(qty_h)
                 isk_h = p1_rate * prices.get(p1_name, 0.0) if p1_name else 0.0
                 extractors.append({
                     "character": owner.character.character_name,
@@ -195,7 +195,7 @@ def compute_planets(owners, prices: dict) -> list:
                 if ext.product_name:
                     content_extractors[ext.product_name] += 1
                     p1_name = P0_TO_P1.get(ext.product_name)
-                    p1_rate = ext.qty_per_hour / 6_000.0 * 40.0
+                    p1_rate = p0_rate_to_p1_rate(ext.avg_per_hour)
                     planet_isk_h += p1_rate * prices.get(p1_name, 0.0) if p1_name else 0.0
             content_factories = defaultdict(int)
             for fac in planet.factories.all():

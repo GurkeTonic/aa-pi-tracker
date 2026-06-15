@@ -12,13 +12,14 @@ class PiProject(models.Model):
     description = models.TextField(blank=True, default="")
     # Corp Projects
     is_corp_project = models.BooleanField(default=False)
-    corp_id = models.IntegerField(null=True, blank=True)
+    corp_id = models.BigIntegerField(null=True, blank=True)
     corp_name = models.CharField(max_length=100, blank=True, default="")
     participants = models.ManyToManyField(
         PiOwner, blank=True, related_name="corp_projects"
     )
 
     class Meta:
+        default_permissions = ()
         ordering = ["name"]
 
     def __str__(self):
@@ -31,6 +32,7 @@ class PiProjectObjective(models.Model):
     target_qty_per_hour = models.PositiveIntegerField(default=1)
 
     class Meta:
+        default_permissions = ()
         unique_together = ("project", "schematic_name")
         ordering = ["schematic_name"]
 
@@ -53,12 +55,13 @@ class PiProjectPlanet(models.Model):
     role = models.CharField(max_length=20, blank=True, default="", choices=ROLE_CHOICES)
     assigned_p0 = models.CharField(max_length=60, blank=True, default="")
     # Fields for planned (not yet colonized) slots — only set when planet is None
-    planned_char_id = models.IntegerField(null=True, blank=True)
+    planned_char_id = models.BigIntegerField(null=True, blank=True)
     planned_char_name = models.CharField(max_length=100, blank=True, default="")
     planned_planet_type = models.CharField(max_length=40, blank=True, default="")
     planned_system_name = models.CharField(max_length=100, blank=True, default="")
 
     class Meta:
+        default_permissions = ()
         ordering = ["role", "planet__planet_name", "planned_char_name"]
 
     def __str__(self):
@@ -70,7 +73,7 @@ class PiMaintenanceLog(models.Model):
     """Server-side per-day maintenance progress tracking (project × character × date)."""
 
     project = models.ForeignKey(PiProject, on_delete=models.CASCADE, related_name="maintenance_logs")
-    character_id = models.IntegerField()
+    character_id = models.BigIntegerField()
     date = models.DateField()
     # Current step (1-3). 4 means done.
     step = models.PositiveSmallIntegerField(default=1)

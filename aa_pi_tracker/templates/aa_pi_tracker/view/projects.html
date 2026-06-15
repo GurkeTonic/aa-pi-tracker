@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n pi_filters evelinks static %}
 
 {% block page_title %}{% trans "PI Tracker — Projects" %}{% endblock %}
@@ -12,8 +12,7 @@
 </li>
 {% endblock %}
 
-{% block content %}
-{% include "framework/header/page-header.html" with title="Projects" %}
+{% block pi_content %}
 <div class="container-fluid mt-3">
 <div class="row g-0">
 
@@ -431,7 +430,7 @@
         {% if not selected_project.objectives.exists %}
         <div class="alert alert-info py-2 small">
           <i class="fas fa-info-circle me-1"></i>
-          Add production targets in the <strong>Manage</strong> tab to see factory requirements.
+          {% blocktrans %}Add production targets in the <strong>Manage</strong> tab to see factory requirements.{% endblocktrans %}
         </div>
         {% else %}
 
@@ -445,15 +444,15 @@
           <table class="table table-sm table-hover mb-0">
             <thead class="table-dark">
               <tr>
-                <th style="min-width:160px">Schematic</th>
-                <th class="text-end" style="width:60px">Need</th>
-                <th class="text-end" style="width:60px">Have</th>
-                <th class="text-end" style="width:60px">Gap</th>
-                <th class="text-end" style="width:80px">Need/h</th>
+                <th style="min-width:160px">{% trans "Schematic" %}</th>
+                <th class="text-end" style="width:60px">{% trans "Need" %}</th>
+                <th class="text-end" style="width:60px">{% trans "Have" %}</th>
+                <th class="text-end" style="width:60px">{% trans "Gap" %}</th>
+                <th class="text-end" style="width:80px">{% trans "Need/h" %}</th>
                 <th class="text-end" style="width:80px">Have/h</th>
                 {% if prices_synced %}
-                <th class="text-end" style="width:100px">ISK target</th>
-                <th class="text-end" style="width:100px">ISK current</th>
+                <th class="text-end" style="width:100px">{% trans "ISK target" %}</th>
+                <th class="text-end" style="width:100px">{% trans "ISK current" %}</th>
                 {% endif %}
               </tr>
             </thead>
@@ -495,13 +494,13 @@
           <table class="table table-sm table-hover mb-0">
             <thead class="table-dark">
               <tr>
-                <th style="min-width:160px">Resource</th>
-                <th class="text-end" style="width:80px">Need/h</th>
+                <th style="min-width:160px">{% trans "Resource" %}</th>
+                <th class="text-end" style="width:80px">{% trans "Need/h" %}</th>
                 <th class="text-end" style="width:80px">Have/h</th>
-                <th class="text-end" style="width:80px">Gap</th>
+                <th class="text-end" style="width:80px">{% trans "Gap" %}</th>
                 {% if prices_synced %}
-                <th class="text-end" style="width:100px">ISK target</th>
-                <th class="text-end" style="width:100px">ISK current</th>
+                <th class="text-end" style="width:100px">{% trans "ISK target" %}</th>
+                <th class="text-end" style="width:100px">{% trans "ISK current" %}</th>
                 {% endif %}
               </tr>
             </thead>
@@ -520,14 +519,14 @@
                 {% endif %}
               </tr>
               {% empty %}
-              <tr><td colspan="{% if prices_synced %}6{% else %}4{% endif %}" class="text-muted text-center small py-2">No extraction requirements.</td></tr>
+              <tr><td colspan="{% if prices_synced %}6{% else %}4{% endif %}" class="text-muted text-center small py-2">{% trans "No extraction requirements." %}</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
         {% endif %}
         {% else %}
-        <div class="text-muted small py-2">No analysis data available.</div>
+        <div class="text-muted small py-2">{% trans "No analysis data available." %}</div>
         {% endif %}
       </div><!-- /tab-analysis -->
 
@@ -565,7 +564,7 @@
                       </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="3" class="text-muted text-center py-3 small">No targets defined.</td></tr>
+                    <tr><td colspan="3" class="text-muted text-center py-3 small">{% trans "No targets defined." %}</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
@@ -588,10 +587,10 @@
                 <table class="table table-sm mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th class="ps-3 small">Character</th>
-                      <th class="small">Planet</th>
-                      <th class="small">System</th>
-                      <th class="small">Role</th>
+                      <th class="ps-3 small">{% trans "Character" %}</th>
+                      <th class="small">{% trans "Planet" %}</th>
+                      <th class="small">{% trans "System" %}</th>
+                      <th class="small">{% trans "Role" %}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -609,8 +608,8 @@
                                 data-pk="{{ pp.pk }}"
                                 style="min-width:100px;height:24px">
                           <option value="" {% if not pp.role %}selected{% endif %}>—</option>
-                          <option value="miner" {% if pp.role == "miner" %}selected{% endif %}>Miner</option>
-                          <option value="factory" {% if pp.role == "factory" %}selected{% endif %}>Factory</option>
+                          <option value="miner" {% if pp.role == "miner" %}selected{% endif %}>{% trans "Miner" %}</option>
+                          <option value="factory" {% if pp.role == "factory" %}selected{% endif %}>{% trans "Factory" %}</option>
                           <option value="factory_p4" {% if pp.role == "factory_p4" %}selected{% endif %}>P4 Factory</option>
                         </select>
                       </td>
@@ -622,7 +621,7 @@
                       </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-muted text-center py-3 small">No planets assigned.</td></tr>
+                    <tr><td colspan="5" class="text-muted text-center py-3 small">{% trans "No planets assigned." %}</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
@@ -662,12 +661,12 @@
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label class="form-label fw-bold small">Name <span class="text-danger">*</span></label>
+          <label class="form-label fw-bold small">{% trans "Name" %} <span class="text-danger">*</span></label>
           <input type="text" class="form-control form-control-sm" id="new-project-name"
                  placeholder="e.g. WMF Chain">
         </div>
         <div>
-          <label class="form-label small">Description <span class="text-muted">(optional)</span></label>
+          <label class="form-label small">{% trans "Description" %} <span class="text-muted">({% trans "optional" %})</span></label>
           <input type="text" class="form-control form-control-sm" id="new-project-desc">
         </div>
       </div>
@@ -690,7 +689,7 @@
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label class="form-label fw-bold small">Schematic <span class="text-danger">*</span></label>
+          <label class="form-label fw-bold small">{% trans "Schematic" %} <span class="text-danger">*</span></label>
           <select class="form-select form-select-sm" id="obj-schematic">
             <option value="">— select —</option>
             {% for group_label, choices in schematic_choices %}
@@ -703,7 +702,7 @@
           </select>
         </div>
         <div>
-          <label class="form-label fw-bold small">Target Qty/h <span class="text-danger">*</span></label>
+          <label class="form-label fw-bold small">{% trans "Target Qty/h" %} <span class="text-danger">*</span></label>
           <select class="form-select form-select-sm" id="obj-qty">
             {% for qty in target_qty_choices %}
             <option value="{{ qty }}">{{ qty }}/h</option>
@@ -730,11 +729,11 @@
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label class="form-label small fw-bold">Schematic</label>
+          <label class="form-label small fw-bold">{% trans "Schematic" %}</label>
           <input type="text" class="form-control form-control-sm bg-light" id="edit-obj-schematic" readonly>
         </div>
         <div>
-          <label class="form-label small fw-bold">Target Qty/h</label>
+          <label class="form-label small fw-bold">{% trans "Target Qty/h" %}</label>
           <select class="form-select form-select-sm" id="edit-obj-qty">
             {% for qty in target_qty_choices %}
             <option value="{{ qty }}">{{ qty }}/h</option>
@@ -760,7 +759,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <label class="form-label fw-bold small">Planet</label>
+        <label class="form-label fw-bold small">{% trans "Planet" %}</label>
         <select class="form-select form-select-sm" id="planet-select"></select>
       </div>
       <div class="modal-footer py-2">
@@ -804,18 +803,18 @@
   document.getElementById("btn-submit-new-project")?.addEventListener("click", () => {
     const name = document.getElementById("new-project-name").value.trim();
     if (!name) { document.getElementById("new-project-name").focus(); return; }
-    fetchPost("{% url 'aa_pi_tracker:create_project' %}", {
+    piPost("{% url 'aa_pi_tracker:create_project' %}", {
       name,
       description: document.getElementById("new-project-desc").value.trim(),
     }).then(r => {
       if (r.ok) { _newProjModal?.hide(); reload(r.pk); }
-      else alert(r.error ?? "Error creating project");
+      else alert(r.error ?? "{% trans 'Error creating project' %}");
     });
   });
 
   // ── Delete project ───────────────────────────────────────────────────────
   document.querySelector(".btn-delete-project")?.addEventListener("click", function () {
-    if (!confirm("Delete this project? This cannot be undone.")) return;
+    if (!confirm("{% trans 'Delete this project? This cannot be undone.' %}")) return;
     document.getElementById("form-delete-project").submit();
   });
 
@@ -833,7 +832,7 @@
     const schematic = document.getElementById("obj-schematic").value;
     if (!schematic || !_curProjPk) return;
     const url = "{% url 'aa_pi_tracker:add_objective' 0 %}".replace("/0/", "/" + _curProjPk + "/");
-    fetchPost(url, {schematic_name:schematic, target_qty_per_hour:document.getElementById("obj-qty").value})
+    piPost(url, {schematic_name:schematic, target_qty_per_hour:document.getElementById("obj-qty").value})
       .then(r => { if (r.ok) { _addObjModal?.hide(); reload(activePk()); } });
   });
 
@@ -849,20 +848,20 @@
   });
   document.getElementById("btn-submit-edit-objective")?.addEventListener("click", () => {
     const url = "{% url 'aa_pi_tracker:edit_objective' 0 %}".replace("/0/", "/" + _editObjPk + "/");
-    fetchPost(url, {target_qty_per_hour:document.getElementById("edit-obj-qty").value})
+    piPost(url, {target_qty_per_hour:document.getElementById("edit-obj-qty").value})
       .then(r => { if (r.ok) { _editObjModal?.hide(); reload(activePk()); } });
   });
 
   document.querySelectorAll(".btn-del-objective").forEach(btn => {
     btn.addEventListener("click", function () {
       const url = "{% url 'aa_pi_tracker:delete_objective' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
-      fetchPost(url, {}).then(r => { if (r.ok) reload(activePk()); });
+      piPost(url, {}).then(r => { if (r.ok) reload(activePk()); });
     });
   });
 
   // ── Assign / remove planets ──────────────────────────────────────────────
   const allPlanets = [
-    {% for row in all_planets %}{pk:"{{ row.planet.pk }}", label:"{{ row.owner.character.character_name }} · {{ row.planet.planet_name }} · {{ row.system }} ({{ row.planet.get_planet_type_display }})"},
+    {% for row in all_planets %}{pk:"{{ row.pk }}", label:"{{ row.char_name|escapejs }} · {{ row.name|escapejs }} · {{ row.system|escapejs }} ({{ row.type_display|escapejs }})"},
     {% endfor %}
   ];
 
@@ -872,14 +871,14 @@
       _curProjPk = this.dataset.pk;
       const assigned = new Set((this.dataset.assigned || "").split(",").filter(Boolean));
       const sel = document.getElementById("planet-select");
-      sel.innerHTML = '<option value="">— select planet —</option>';
+      sel.innerHTML = '<option value="">{% trans "— select planet —" %}</option>';
       const avail = allPlanets.filter(p => !assigned.has(p.pk));
       avail.forEach(p => {
         const o = document.createElement("option");
         o.value = p.pk; o.textContent = p.label;
         sel.appendChild(o);
       });
-      if (!avail.length) sel.innerHTML = '<option disabled>All planets already assigned.</option>';
+      if (!avail.length) sel.innerHTML = '<option disabled>{% trans "All planets already assigned." %}</option>';
       _addPlanetModal = new bootstrap.Modal(document.getElementById("modal-add-planet"));
       _addPlanetModal.show();
     });
@@ -888,14 +887,14 @@
     const planetPk = document.getElementById("planet-select").value;
     if (!planetPk || !_curProjPk) return;
     const url = "{% url 'aa_pi_tracker:add_project_planet' 0 %}".replace("/0/", "/" + _curProjPk + "/");
-    fetchPost(url, {planet_pk:planetPk})
+    piPost(url, {planet_pk:planetPk})
       .then(r => { if (r.ok) { _addPlanetModal?.hide(); reload(activePk()); } });
   });
 
   document.querySelectorAll(".btn-remove-planet").forEach(btn => {
     btn.addEventListener("click", function () {
       const url = "{% url 'aa_pi_tracker:remove_project_planet' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
-      fetchPost(url, {}).then(r => { if (r.ok) reload(activePk()); });
+      piPost(url, {}).then(r => { if (r.ok) reload(activePk()); });
     });
   });
 
@@ -903,9 +902,9 @@
   document.querySelectorAll(".role-select").forEach(sel => {
     sel.addEventListener("change", function () {
       const url = "{% url 'aa_pi_tracker:update_project_planet_role' 0 %}".replace("/0/", "/" + this.dataset.pk + "/");
-      fetchPost(url, {role: this.value}).then(r => {
+      piPost(url, {role: this.value}).then(r => {
         if (r.ok) reload(activePk());
-        else { alert("Failed to update role"); this.value = this.dataset.prev || ""; }
+        else { alert("{% trans 'Failed to update role' %}"); this.value = this.dataset.prev || ""; }
       });
     });
     sel.addEventListener("focus", function () { this.dataset.prev = this.value; });

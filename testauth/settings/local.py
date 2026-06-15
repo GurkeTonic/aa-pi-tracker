@@ -26,6 +26,7 @@ DEBUG = False
 LOGGING = False
 
 INSTALLED_APPS += [
+    "eve_sde",
     PACKAGE,
 ]
 

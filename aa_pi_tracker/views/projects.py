@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 
 from ..models import PiPlanet, PiProject, PiProjectObjective, PiProjectPlanet
 from ..pi_data import SCHEMATIC_CHOICES, SCHEMATICS, expand_production, output_per_hour
-from .helpers import compute_planets, get_owners, load_prices, nav_data
+from .helpers import get_owners, load_prices, nav_data
 
 
 def _build_project_data(project: PiProject, prices: dict) -> dict:
@@ -100,7 +100,7 @@ def _build_project_data(project: PiProject, prices: dict) -> dict:
     for planet in assigned_planets:
         for ext in planet.extractors.all():
             if ext.product_name:
-                actual_extractions[ext.product_name] += ext.qty_per_hour
+                actual_extractions[ext.product_name] += ext.avg_per_hour
 
     fabrication_by_tier: dict[int, list] = {1: [], 2: [], 3: [], 4: []}
     for schematic_name, needed_float in sorted(
@@ -202,8 +202,21 @@ def projects_page(request):
         except (PiProject.DoesNotExist, ValueError):
             pass
 
-    owners = get_owners(request.user, prefetch_planets=True)
-    all_planets = compute_planets(owners, prices)
+    # Lightweight planet list for the assign-planet dropdown only (pk/name/
+    # system/type) — no need for the full compute_planets aggregation here.
+    owners = get_owners(request.user)
+    all_planets = [
+        {
+            "pk": p.pk,
+            "char_name": p.owner.character.character_name,
+            "name": p.planet_name,
+            "system": p.solar_system_name or "—",
+            "type_display": p.get_planet_type_display(),
+        }
+        for p in PiPlanet.objects.filter(owner__user=request.user)
+        .select_related("owner__character")
+        .order_by("solar_system_name", "planet_name")
+    ]
 
     ctx = {
         "active_page": "projects",
@@ -265,7 +278,10 @@ def add_objective(request, pk):
 @require_POST
 def edit_objective(request, pk):
     obj = get_object_or_404(PiProjectObjective, pk=pk, project__user=request.user)
-    obj.target_qty_per_hour = int(request.POST.get("target_qty_per_hour", obj.target_qty_per_hour))
+    try:
+        obj.target_qty_per_hour = max(1, int(request.POST.get("target_qty_per_hour", obj.target_qty_per_hour)))
+    except (ValueError, TypeError):
+        return JsonResponse({"ok": False, "error": "Invalid quantity."}, status=400)
     obj.save(update_fields=["target_qty_per_hour"])
     return JsonResponse({"ok": True})
 

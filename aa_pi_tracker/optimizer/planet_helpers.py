@@ -17,12 +17,13 @@ def possible_p0(planet):
 
 
 def extraction_rate(planet):
-    total = sum(e.qty_per_hour for e in planet.extractors.all() if e.product_name)
+    total = sum(e.avg_per_hour for e in planet.extractors.all() if e.product_name)
     return round(total, 0) if total > 0 else None
 
 
-def planet_info(planet, jd=None):
+def planet_info(planet, jd=None, radii=None):
     jumps = jd.get(planet.solar_system_id) if (jd and planet.solar_system_id) else None
+    radius_km = radii.get(planet.planet_id) if radii else None
     return {
         "pk": planet.pk,
         "name": planet.planet_name,
@@ -38,10 +39,11 @@ def planet_info(planet, jd=None):
         "rate": extraction_rate(planet),
         "upgrade_level": planet.upgrade_level,
         "jumps": jumps,
+        "radius_km": radius_km,
         "new_slot": False,
         "truly_missing": False,
     }
 
 
 def market_prices():
-    return {p.type_name: p.jita_buy for p in PiMarketPrice.objects.all()}
+    return {p.type_name: float(p.jita_buy) for p in PiMarketPrice.objects.all()}

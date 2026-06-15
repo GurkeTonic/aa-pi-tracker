@@ -1,4 +1,4 @@
-{% extends "allianceauth/base-bs5.html" %}
+{% extends "aa_pi_tracker/base.html" %}
 {% load i18n pi_filters evelinks %}
 
 {% block page_title %}{% blocktrans with name=project.name %}Maintenance — {{ name }}{% endblocktrans %}{% endblock %}
@@ -28,8 +28,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
-{% include "framework/header/page-header.html" with title="Maintenance" %}
+{% block pi_content %}
 <div class="container-fluid mt-3">
 
   <!-- Header -->
@@ -50,11 +49,11 @@
     <i class="fas fa-exclamation-triangle fa-lg"></i>
     <div>
       {% if total_expired %}
-      <strong>{{ total_expired }} expired extractor{{ total_expired|pluralize }}</strong>
-      {% if total_critical %} · {{ total_critical }} critical{% endif %}
-      — reset now!
+      <strong>{% blocktrans count n=total_expired %}{{ n }} expired extractor{% plural %}{{ n }} expired extractors{% endblocktrans %}</strong>
+      {% if total_critical %} · {{ total_critical }} {% trans "critical" %}{% endif %}
+      — {% trans "reset now!" %}
       {% else %}
-      <strong>{{ total_critical }} critical extractor{{ total_critical|pluralize }}</strong> — reset within 4h
+      <strong>{% blocktrans count n=total_critical %}{{ n }} critical extractor{% plural %}{{ n }} critical extractors{% endblocktrans %}</strong> — {% trans "reset within 4h" %}
       {% endif %}
     </div>
   </div>
@@ -64,7 +63,7 @@
   {% if total_chars %}
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
-      <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:.04em">Pilots</span>
+      <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:.04em">{% trans "Pilots" %}</span>
       <div class="flex-grow-1" style="max-width:300px">
         <div class="progress" style="height:6px">
           {% if total_chars %}
@@ -80,7 +79,7 @@
   {% if not chars_data %}
   <div class="alert alert-info">
     <i class="fas fa-info-circle me-2"></i>
-    No colonized planets found. Sync ESI data first or assign planets to this project.
+    {% trans "No colonized planets found. Sync ESI data first or assign planets to this project." %}
   </div>
   {% else %}
 
@@ -107,27 +106,27 @@
             <div class="d-flex flex-wrap gap-2 mt-1">
               {% if char.expired_count %}
               <span class="badge bg-danger pi-text-sm">
-                <i class="fas fa-times-circle me-1"></i>{{ char.expired_count }} expired
+                <i class="fas fa-times-circle me-1"></i>{{ char.expired_count }} {% trans "expired" %}
               </span>
               {% endif %}
               {% if char.critical_count %}
               <span class="badge bg-warning text-dark pi-text-sm">
-                <i class="fas fa-exclamation-circle me-1"></i>{{ char.critical_count }} critical
+                <i class="fas fa-exclamation-circle me-1"></i>{{ char.critical_count }} {% trans "critical" %}
               </span>
               {% endif %}
               {% if not char.expired_count and not char.critical_count %}
               <span class="badge bg-success pi-text-sm">
-                <i class="fas fa-check-circle me-1"></i>Extractors OK
+                <i class="fas fa-check-circle me-1"></i>{% trans "Extractors OK" %}
               </span>
               {% endif %}
               {% if char.pickup_count %}
               <span class="badge bg-info text-dark pi-text-sm">
-                <i class="fas fa-box me-1"></i>{{ char.pickup_count }} pickup{{ char.pickup_count|pluralize }}
+                <i class="fas fa-box me-1"></i>{% blocktrans count n=char.pickup_count %}{{ n }} pickup{% plural %}{{ n }} pickups{% endblocktrans %}
               </span>
               {% endif %}
               {% if char.delivery_count %}
               <span class="badge bg-primary pi-text-sm">
-                <i class="fas fa-truck me-1"></i>{{ char.delivery_count }} delivery{{ char.delivery_count|pluralize }}
+                <i class="fas fa-truck me-1"></i>{% blocktrans count n=char.delivery_count %}{{ n }} delivery{% plural %}{{ n }} deliveries{% endblocktrans %}
               </span>
               {% endif %}
             </div>
