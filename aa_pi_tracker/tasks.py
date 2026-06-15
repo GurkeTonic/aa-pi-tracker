@@ -7,17 +7,26 @@ and type names are resolved from the local EVE SDE (``eve_sde``) to avoid extra
 ESI calls. Market prices come from the third-party Fuzzwork API (not ESI).
 """
 
+# Standard Library
 from decimal import Decimal, InvalidOperation
 
+# Third Party
 import requests
 from celery import shared_task
+
+# Django
 from django.core.cache import cache
 from django.db import connection, transaction
 from django.utils import timezone as djtimezone
 
+# Alliance Auth
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from esi.exceptions import ESIBucketLimitException, ESIErrorLimitException, HTTPNotModified
+from esi.exceptions import (
+    ESIBucketLimitException,
+    ESIErrorLimitException,
+    HTTPNotModified,
+)
 
 from .app_settings import (
     AA_PI_TRACKER_EXPIRY_WARN_HOURS,
@@ -33,6 +42,7 @@ from .models import (
     PiProjectPlanet,
     PiStorageItem,
 )
+from .pi_data import ESI_SCHEMATIC_NAMES, P0_TYPES, SCHEMATICS
 from .providers.esi import (
     SKILL_ADVANCED_PLANETOLOGY,
     SKILL_COMMAND_CENTER_UPGRADES,
@@ -46,7 +56,6 @@ from .providers.esi import (
     parse_dt,
     user_agent,
 )
-from .pi_data import ESI_SCHEMATIC_NAMES, P0_TYPES, SCHEMATICS
 
 logger = get_extension_logger(__name__)
 
@@ -73,14 +82,19 @@ def _get_product_name(type_id: int, extra_names: dict | None = None) -> str:
 def _populate_planet_location(planet_obj: PiPlanet) -> None:
     """Fill planet name + system/region info from SDE — zero ESI calls."""
     try:
+        # Third Party
         from eve_sde.models import Planet as SDEPlanet
+
         sde = SDEPlanet.objects.select_related(
             "solar_system__constellation__region"
         ).get(id=planet_obj.planet_id)
         ss = sde.solar_system
         update_fields = [
-            "solar_system_id", "solar_system_name", "security_status",
-            "constellation_name", "region_name",
+            "solar_system_id",
+            "solar_system_name",
+            "security_status",
+            "constellation_name",
+            "region_name",
         ]
         planet_obj.solar_system_id = ss.id
         planet_obj.solar_system_name = ss.name
@@ -96,6 +110,7 @@ def _populate_planet_location(planet_obj: PiPlanet) -> None:
 
 
 # ── PI data sync ───────────────────────────────────────────────────────────────
+
 
 @shared_task(base=QueueOnce, once={"graceful": True})
 def sync_all_pi_data():
@@ -144,10 +159,19 @@ def sync_owner_pi_data(owner_pk: int):
         skill_levels = fetch_pi_skills(char_id, skills_token)
         if skill_levels is not None:
             _skill_map = {
-                SKILL_INTERPLANETARY_CONSOLIDATION: ("interplanetary_consolidation", "interplanetary_consolidation_trained"),
-                SKILL_COMMAND_CENTER_UPGRADES: ("command_center_upgrades", "command_center_upgrades_trained"),
+                SKILL_INTERPLANETARY_CONSOLIDATION: (
+                    "interplanetary_consolidation",
+                    "interplanetary_consolidation_trained",
+                ),
+                SKILL_COMMAND_CENTER_UPGRADES: (
+                    "command_center_upgrades",
+                    "command_center_upgrades_trained",
+                ),
                 SKILL_PLANETOLOGY: ("planetology", "planetology_trained"),
-                SKILL_ADVANCED_PLANETOLOGY: ("advanced_planetology", "advanced_planetology_trained"),
+                SKILL_ADVANCED_PLANETOLOGY: (
+                    "advanced_planetology",
+                    "advanced_planetology_trained",
+                ),
                 SKILL_REMOTE_SENSING: ("remote_sensing", "remote_sensing_trained"),
             }
             for skill_id, (active_field, trained_field) in _skill_map.items():
@@ -193,6 +217,7 @@ def _try_link_project_planets(owner: PiOwner) -> None:
     Slots without a planned_system_name are skipped — the optimizer did not suggest
     a specific system, so there is nothing to match against.
     """
+    # Standard Library
     from collections import defaultdict
 
     char_id = owner.character.character_id
@@ -208,12 +233,14 @@ def _try_link_project_planets(owner: PiOwner) -> None:
         return
 
     already_linked_ids = set(
-        PiProjectPlanet.objects.filter(planet__isnull=False)
-        .values_list("planet_id", flat=True)
+        PiProjectPlanet.objects.filter(planet__isnull=False).values_list(
+            "planet_id", flat=True
+        )
     )
 
     candidates = [
-        p for p in owner.planets.all()
+        p
+        for p in owner.planets.all()
         if p.pk not in already_linked_ids and p.solar_system_name
     ]
 
@@ -230,7 +257,10 @@ def _try_link_project_planets(owner: PiOwner) -> None:
             by_type_system[key] = []
             logger.info(
                 "Auto-linked planned slot pk=%s (project=%s, role=%s) → planet %s",
-                pp.pk, pp.project_id, pp.role, matches[0],
+                pp.pk,
+                pp.project_id,
+                pp.role,
+                matches[0],
             )
 
 
@@ -271,8 +301,12 @@ def _sync_planet_pins(planet: PiPlanet, char_id: int, token):
     sde_names: dict[int, str] = {}
     if unknown_ids:
         try:
+            # Third Party
             from eve_sde.models import ItemType
-            sde_names = dict(ItemType.objects.filter(id__in=unknown_ids).values_list("id", "name"))
+
+            sde_names = dict(
+                ItemType.objects.filter(id__in=unknown_ids).values_list("id", "name")
+            )
         except Exception:
             pass
 
@@ -306,7 +340,9 @@ def _sync_planet_pins(planet: PiPlanet, char_id: int, token):
                 PiFactoryPin(
                     planet=planet,
                     schematic_id=schematic_id,
-                    schematic_name=ESI_SCHEMATIC_NAMES.get(schematic_id, f"Schematic {schematic_id}"),
+                    schematic_name=ESI_SCHEMATIC_NAMES.get(
+                        schematic_id, f"Schematic {schematic_id}"
+                    ),
                 )
             )
 
@@ -339,6 +375,7 @@ def _sync_planet_pins(planet: PiPlanet, char_id: int, token):
 
 # ── Market price sync ──────────────────────────────────────────────────────────
 
+
 @shared_task(base=QueueOnce, once={"graceful": True})
 def sync_market_prices():
     """Fetch Jita buy prices for all PI products from Fuzzwork market API."""
@@ -347,12 +384,16 @@ def sync_market_prices():
         logger.debug("Market prices still cached, skipping Fuzzwork call")
         return
 
+    # Third Party
     from eve_sde.models import ItemType
 
     type_map: dict[int, tuple[str, int]] = {}
 
     schematic_names = list(SCHEMATICS.keys())
-    sde_types = {t.name: t.id for t in ItemType.objects.filter(name__in=schematic_names).only("id", "name")}
+    sde_types = {
+        t.name: t.id
+        for t in ItemType.objects.filter(name__in=schematic_names).only("id", "name")
+    }
     for schematic_name, data in SCHEMATICS.items():
         tier = data["tier"]
         type_id = sde_types.get(schematic_name)
@@ -386,7 +427,9 @@ def sync_market_prices():
             continue
         name, tier = type_map[type_id]
         try:
-            jita_buy = Decimal(str((prices.get("buy") or {}).get("max") or 0)).quantize(Decimal("0.01"))
+            jita_buy = Decimal(str((prices.get("buy") or {}).get("max") or 0)).quantize(
+                Decimal("0.01")
+            )
         except (InvalidOperation, ValueError):
             jita_buy = Decimal("0")
         items_to_upsert.append(
@@ -407,10 +450,13 @@ def sync_market_prices():
         PiMarketPrice.objects.bulk_create(items_to_upsert, **upsert_kwargs)
 
     cache.set(cache_key, True, timeout=1800)
-    logger.info("PI market prices updated for %d products (Jita buy)", len(items_to_upsert))
+    logger.info(
+        "PI market prices updated for %d products (Jita buy)", len(items_to_upsert)
+    )
 
 
 # ── Extractor expiry notifications ───────────────────────────────────────────────
+
 
 @shared_task(base=QueueOnce, once={"graceful": True})
 def check_extractor_expiry():
@@ -419,9 +465,11 @@ def check_extractor_expiry():
     extractors. Each pin is flagged afterwards so it is not re-notified; the flag
     survives a re-sync and resets only when a new program is installed
     (see ``_sync_planet_pins``)."""
+    # Standard Library
     from collections import defaultdict
     from datetime import timedelta
 
+    # Alliance Auth
     from allianceauth.notifications import notify
 
     now = djtimezone.now()
@@ -452,22 +500,30 @@ def check_extractor_expiry():
             else:
                 hours = int(remaining.total_seconds() // 3600)
                 when = f"in {hours}h" if hours else "< 1h"
-            lines.append(f"• {p.planet.planet_name}: {p.product_name or 'Extractor'} ({when})")
+            lines.append(
+                f"• {p.planet.planet_name}: {p.product_name or 'Extractor'} ({when})"
+            )
         title = f"PI: {len(user_pins)} extractor program(s) expiring soon"
         notify(user, title, message="\n".join(lines), level="warning")
 
-    PiExtractorPin.objects.filter(pk__in=[p.pk for p in pins]).update(notified_expiry=True)
+    PiExtractorPin.objects.filter(pk__in=[p.pk for p in pins]).update(
+        notified_expiry=True
+    )
 
 
 # ── Maintenance log retention ────────────────────────────────────────────────────
+
 
 @shared_task(base=QueueOnce, once={"graceful": True})
 def purge_old_maintenance_logs():
     """Delete PiMaintenanceLog rows older than the retention window so the daily
     per-character progress table does not grow unbounded."""
+    # Standard Library
     from datetime import timedelta
 
-    cutoff = djtimezone.localdate() - timedelta(days=AA_PI_TRACKER_MAINT_LOG_RETENTION_DAYS)
+    cutoff = djtimezone.localdate() - timedelta(
+        days=AA_PI_TRACKER_MAINT_LOG_RETENTION_DAYS
+    )
     deleted, _ = PiMaintenanceLog.objects.filter(date__lt=cutoff).delete()
     if deleted:
         logger.info("Purged %d maintenance log(s) older than %s", deleted, cutoff)

@@ -1,7 +1,8 @@
+# Django
 from django.db import models
 
-from .core import PiOwner
 from ..pi_data import extractor_avg_per_hour
+from .core import PiOwner
 
 
 class PiPlanet(models.Model):
@@ -19,7 +20,9 @@ class PiPlanet(models.Model):
     owner = models.ForeignKey(PiOwner, on_delete=models.CASCADE, related_name="planets")
     planet_id = models.BigIntegerField()
     planet_name = models.CharField(max_length=100, blank=True, default="")
-    planet_type = models.CharField(max_length=20, choices=PLANET_TYPES, default="barren")
+    planet_type = models.CharField(
+        max_length=20, choices=PLANET_TYPES, default="barren"
+    )
     upgrade_level = models.IntegerField(default=0)
     last_update = models.DateTimeField(null=True, blank=True)
     # Location data populated from SDE
@@ -57,7 +60,9 @@ class PiPlanet(models.Model):
 
 
 class PiExtractorPin(models.Model):
-    planet = models.ForeignKey(PiPlanet, on_delete=models.CASCADE, related_name="extractors")
+    planet = models.ForeignKey(
+        PiPlanet, on_delete=models.CASCADE, related_name="extractors"
+    )
     product_type_id = models.IntegerField()
     product_name = models.CharField(max_length=100, blank=True, default="")
     cycle_time = models.IntegerField(default=1800)
@@ -92,7 +97,9 @@ class PiExtractorPin(models.Model):
 
 
 class PiFactoryPin(models.Model):
-    planet = models.ForeignKey(PiPlanet, on_delete=models.CASCADE, related_name="factories")
+    planet = models.ForeignKey(
+        PiPlanet, on_delete=models.CASCADE, related_name="factories"
+    )
     schematic_id = models.IntegerField(default=0)
     schematic_name = models.CharField(max_length=100, blank=True, default="")
 
@@ -106,7 +113,10 @@ class PiFactoryPin(models.Model):
 
 class PiStorageItem(models.Model):
     """Aggregated contents of all pins (storage, launchpads) on a planet."""
-    planet = models.ForeignKey(PiPlanet, on_delete=models.CASCADE, related_name="storage_items")
+
+    planet = models.ForeignKey(
+        PiPlanet, on_delete=models.CASCADE, related_name="storage_items"
+    )
     type_id = models.IntegerField()
     type_name = models.CharField(max_length=100)
     amount = models.BigIntegerField(default=0)

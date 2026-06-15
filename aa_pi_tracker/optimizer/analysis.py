@@ -1,4 +1,10 @@
-from ..pi_data import MAX_AIFS_PER_FACTORY_PLANET, PLANET_TYPE_SLUG_TO_P0, SCHEMATICS, calculate_poco_tax, production_plan
+from ..pi_data import (
+    MAX_AIFS_PER_FACTORY_PLANET,
+    PLANET_TYPE_SLUG_TO_P0,
+    SCHEMATICS,
+    calculate_poco_tax,
+    production_plan,
+)
 from .planet_helpers import market_prices
 from .routing import SDE_TYPE_ID_TO_SLUG, jump_distances, sde_types_in_range
 from .slots import get_char_slots
@@ -7,7 +13,9 @@ _P4_TYPES = {"barren", "temperate"}
 _AVOID_FACTORY = {"gas"}
 
 
-def _build_miner_char_queue(char_slots, miner_budget, total_miners, priority_char_id=None):
+def _build_miner_char_queue(
+    char_slots, miner_budget, total_miners, priority_char_id=None
+):
     """Pre-assign miner slots to chars.
 
     Primary char fills first (all remaining slots), then other chars in descending
@@ -19,7 +27,9 @@ def _build_miner_char_queue(char_slots, miner_budget, total_miners, priority_cha
     queue = []
 
     if priority_char_id:
-        p_cs = next((cs for cs in char_slots if cs["char_id"] == priority_char_id), None)
+        p_cs = next(
+            (cs for cs in char_slots if cs["char_id"] == priority_char_id), None
+        )
         if p_cs:
             take = min(budget.get(priority_char_id, 0), total_miners)
             queue.extend([p_cs] * take)
@@ -54,7 +64,10 @@ def _pick_char_for_factory(char_slots, new_slot_budget):
             continue
         cs_aifs = cs.get("max_aifs", 0)
         best_aifs = best.get("max_aifs", 0)
-        if cs_aifs > best_aifs or (cs_aifs == best_aifs and new_slot_budget[cs["char_id"]] > new_slot_budget[best["char_id"]]):
+        if cs_aifs > best_aifs or (
+            cs_aifs == best_aifs
+            and new_slot_budget[cs["char_id"]] > new_slot_budget[best["char_id"]]
+        ):
             best = cs
     return best
 
@@ -66,20 +79,30 @@ def _effective_max_aifs(char_slots):
     Falls back to MAX_AIFS_PER_FACTORY_PLANET (CCU5 default) when no char has
     a synced CCU yet — ensures backward-compat and correct test behaviour.
     """
-    synced = [cs["max_aifs"] for cs in char_slots if cs.get("command_center_upgrades", 0) > 0]
+    synced = [
+        cs["max_aifs"] for cs in char_slots if cs.get("command_center_upgrades", 0) > 0
+    ]
     return max(synced) if synced else MAX_AIFS_PER_FACTORY_PLANET
 
 
-def _new_slot_entry(role, char_slot, sde_ok_types, examples, p0=None, p0_rate=None, no_slots=False):
+def _new_slot_entry(
+    role, char_slot, sde_ok_types, examples, p0=None, p0_rate=None, no_slots=False
+):
     """Build an assignment entry for a new (uncolonized) planet slot.
 
     examples format: {slug: (system_name, jumps, radius_km, planet_name)}
     Best type = fewest jumps, ties broken by smallest radius.
     """
     best_type = (
-        min(sde_ok_types, key=lambda t: (examples.get(t, ("?", 999, 999_000, ""))[1],
-                                         examples.get(t, ("?", 999, 999_000, ""))[2]))
-        if sde_ok_types else None
+        min(
+            sde_ok_types,
+            key=lambda t: (
+                examples.get(t, ("?", 999, 999_000, ""))[1],
+                examples.get(t, ("?", 999, 999_000, ""))[2],
+            ),
+        )
+        if sde_ok_types
+        else None
     )
     ex = examples.get(best_type) if best_type else None
     return {
@@ -113,7 +136,17 @@ def _new_slot_entry(role, char_slot, sde_ok_types, examples, p0=None, p0_rate=No
     }
 
 
-def analyze_target(user, target_schematic, home_system_id=None, max_jumps=15, tax_rate=0, qty_per_hour=1, *, owners=None, p4_char_id=None):
+def analyze_target(
+    user,
+    target_schematic,
+    home_system_id=None,
+    max_jumps=15,
+    tax_rate=0,
+    qty_per_hour=1,
+    *,
+    owners=None,
+    p4_char_id=None,
+):
     if target_schematic not in SCHEMATICS:
         return {"error": f"Unknown schematic: {target_schematic}"}
 
@@ -130,7 +163,9 @@ def analyze_target(user, target_schematic, home_system_id=None, max_jumps=15, ta
 
     # qty is applied inside production_plan (single rounding) — never scale the
     # already-ceiled 1× counts afterwards, that over-estimates the plan.
-    plan = production_plan(target_schematic, qty_per_hour, max_aifs_per_planet=eff_max_aifs)
+    plan = production_plan(
+        target_schematic, qty_per_hour, max_aifs_per_planet=eff_max_aifs
+    )
 
     p0_needed = plan["p0_rates"]
 
@@ -158,7 +193,10 @@ def analyze_target(user, target_schematic, home_system_id=None, max_jumps=15, ta
             new_slot_budget[p4_char_id] -= can_take
             factories_to_reserve -= can_take
 
-    for cs in sorted(char_slots, key=lambda c: (-c.get("max_aifs", 0), -new_slot_budget.get(c["char_id"], 0))):
+    for cs in sorted(
+        char_slots,
+        key=lambda c: (-c.get("max_aifs", 0), -new_slot_budget.get(c["char_id"], 0)),
+    ):
         if factories_to_reserve <= 0:
             break
         if cs["char_id"] == p4_char_id:
@@ -166,18 +204,24 @@ def analyze_target(user, target_schematic, home_system_id=None, max_jumps=15, ta
         avail = new_slot_budget[cs["char_id"]]
         take = min(factories_to_reserve, avail)
         if take > 0:
-            factory_new_budget[cs["char_id"]] = factory_new_budget.get(cs["char_id"], 0) + take
+            factory_new_budget[cs["char_id"]] = (
+                factory_new_budget.get(cs["char_id"], 0) + take
+            )
             new_slot_budget[cs["char_id"]] -= take
             factories_to_reserve -= take
 
     # Miner queue: primary char fills first, then largest-budget chars completely.
-    miner_queue = _build_miner_char_queue(char_slots, new_slot_budget, plan["total_miners"], p4_char_id)
+    miner_queue = _build_miner_char_queue(
+        char_slots, new_slot_budget, plan["total_miners"], p4_char_id
+    )
     miner_idx = 0
     miner_assignments = []
     missing_p0 = []
 
     for p0_name, miner_count in sorted(plan["miners_per_p0"].items()):
-        needed_types = {t for t, p0s in PLANET_TYPE_SLUG_TO_P0.items() if p0_name in p0s}
+        needed_types = {
+            t for t, p0s in PLANET_TYPE_SLUG_TO_P0.items() if p0_name in p0s
+        }
         p0_rate_per_miner = round(p0_needed.get(p0_name, 0) / miner_count, 0)
         sde_ok = needed_types & sde_avail
 
@@ -185,17 +229,29 @@ def analyze_target(user, target_schematic, home_system_id=None, max_jumps=15, ta
             char = miner_queue[miner_idx] if miner_idx < len(miner_queue) else None
             miner_idx += 1
             if sde_ok and char is not None:
-                miner_assignments.append(_new_slot_entry(
-                    "miner", char, sde_ok, sde_examples,
-                    p0=p0_name, p0_rate=p0_rate_per_miner,
-                ))
+                miner_assignments.append(
+                    _new_slot_entry(
+                        "miner",
+                        char,
+                        sde_ok,
+                        sde_examples,
+                        p0=p0_name,
+                        p0_rate=p0_rate_per_miner,
+                    )
+                )
             else:
                 missing_p0.append(p0_name)
-                miner_assignments.append(_new_slot_entry(
-                    "miner", None, sde_ok, sde_examples,
-                    p0=p0_name, p0_rate=p0_rate_per_miner,
-                    no_slots=bool(sde_ok),
-                ))
+                miner_assignments.append(
+                    _new_slot_entry(
+                        "miner",
+                        None,
+                        sde_ok,
+                        sde_examples,
+                        p0=p0_name,
+                        p0_rate=p0_rate_per_miner,
+                        no_slots=bool(sde_ok),
+                    )
+                )
 
     factory_slots = []
 
@@ -229,25 +285,46 @@ def analyze_target(user, target_schematic, home_system_id=None, max_jumps=15, ta
 
     feasible = (
         (not missing_p0)
-        and all(not s.get("truly_missing") and not s.get("no_slots") for s in factory_slots)
-        and all(not a.get("truly_missing") and not a.get("no_slots") for a in miner_assignments)
+        and all(
+            not s.get("truly_missing") and not s.get("no_slots") for s in factory_slots
+        )
+        and all(
+            not a.get("truly_missing") and not a.get("no_slots")
+            for a in miner_assignments
+        )
     )
     new_slots_needed = plan["total_planets"]
 
     aifs_display = sorted(
-        [{"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": c, "building": "AIF"}
-         for n, c in plan["aifs"].items()],
+        [
+            {
+                "schematic": n,
+                "tier": SCHEMATICS[n]["tier"],
+                "count": c,
+                "building": "AIF",
+            }
+            for n, c in plan["aifs"].items()
+        ],
         key=lambda x: (-x["tier"], x["schematic"]),
     )
     htpps_display = sorted(
-        [{"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": c, "building": "HTPP"}
-         for n, c in plan["htpps"].items()],
+        [
+            {
+                "schematic": n,
+                "tier": SCHEMATICS[n]["tier"],
+                "count": c,
+                "building": "HTPP",
+            }
+            for n, c in plan["htpps"].items()
+        ],
         key=lambda x: x["schematic"],
     )
     factories_display = sorted(
-        [{"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": round(c, 2)}
-         for n, c in plan["factories"].items()
-         if n in SCHEMATICS],
+        [
+            {"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": round(c, 2)}
+            for n, c in plan["factories"].items()
+            if n in SCHEMATICS
+        ],
         key=lambda x: -x["tier"],
     )
 
@@ -294,7 +371,9 @@ def analyze_target(user, target_schematic, home_system_id=None, max_jumps=15, ta
     }
 
 
-def analyze_max_isk(user, home_system_id=None, max_jumps=15, tax_rate=0, qty_per_hour=1, *, owners=None):
+def analyze_max_isk(
+    user, home_system_id=None, max_jumps=15, tax_rate=0, qty_per_hour=1, *, owners=None
+):
     if home_system_id:
         jd = jump_distances(home_system_id, max_jumps)
         sde_avail, _ = sde_types_in_range(jd)
@@ -309,14 +388,20 @@ def analyze_max_isk(user, home_system_id=None, max_jumps=15, tax_rate=0, qty_per
     has_factory_planet = bool(sde_avail - _AVOID_FACTORY)
 
     char_slots = get_char_slots(user, owners=owners)
-    total_free_slots = sum(len(cs["free_colonized"]) + cs["new_slots"] for cs in char_slots)
+    total_free_slots = sum(
+        len(cs["free_colonized"]) + cs["new_slots"] for cs in char_slots
+    )
     eff_max_aifs = _effective_max_aifs(char_slots)
 
     # Check if the user's actual free colonized planets include a Barren/Temperate type,
     # or if they have new slots available in a range that has such planets.
-    free_planet_types = {p.planet_type for cs in char_slots for p in cs["free_colonized"]}
+    free_planet_types = {
+        p.planet_type for cs in char_slots for p in cs["free_colonized"]
+    }
     has_new_slots = any(cs["new_slots"] > 0 for cs in char_slots)
-    has_free_p4_slot = bool(_P4_TYPES & free_planet_types) or (has_new_slots and has_p4_planet)
+    has_free_p4_slot = bool(_P4_TYPES & free_planet_types) or (
+        has_new_slots and has_p4_planet
+    )
 
     prices = market_prices()
     results = []
@@ -346,29 +431,31 @@ def analyze_max_isk(user, home_system_id=None, max_jumps=15, tax_rate=0, qty_per
         isk_per_day_net = round(isk_per_day_gross - tax_cost, 0)
         p0_opp_cost_day = 0
         isk_per_day_true = isk_per_day_net
-        results.append({
-            "product": name,
-            "tier": s["tier"],
-            "feasible": feasible,
-            "factory_ok": factory_ok,
-            "required_p0": sorted(required_p0),
-            "missing_p0": [],
-            "planets_needed": planets_needed,
-            "miners_needed": plan["total_miners"],
-            "factory_planets_needed": plan["factory_planets"],
-            "enough_slots": enough_slots,
-            "isk_per_hour": round(plan["output_per_hour"] * price, 0),
-            "isk_per_hour_net": round(isk_per_day_net / 24, 0),
-            "isk_per_hour_true": round(isk_per_day_true / 24, 0),
-            "output_per_day": plan["output_per_day"],
-            "isk_per_day": isk_per_day_gross,
-            "isk_per_day_net": isk_per_day_net,
-            "tax_cost_per_day": round(tax_cost, 0),
-            "p0_opportunity_cost_per_day": p0_opp_cost_day,
-            "isk_per_day_true": isk_per_day_true,
-            "output_per_hour": round(plan["output_per_hour"], 4),
-            "price": round(price, 0),
-        })
+        results.append(
+            {
+                "product": name,
+                "tier": s["tier"],
+                "feasible": feasible,
+                "factory_ok": factory_ok,
+                "required_p0": sorted(required_p0),
+                "missing_p0": [],
+                "planets_needed": planets_needed,
+                "miners_needed": plan["total_miners"],
+                "factory_planets_needed": plan["factory_planets"],
+                "enough_slots": enough_slots,
+                "isk_per_hour": round(plan["output_per_hour"] * price, 0),
+                "isk_per_hour_net": round(isk_per_day_net / 24, 0),
+                "isk_per_hour_true": round(isk_per_day_true / 24, 0),
+                "output_per_day": plan["output_per_day"],
+                "isk_per_day": isk_per_day_gross,
+                "isk_per_day_net": isk_per_day_net,
+                "tax_cost_per_day": round(tax_cost, 0),
+                "p0_opportunity_cost_per_day": p0_opp_cost_day,
+                "isk_per_day_true": isk_per_day_true,
+                "output_per_hour": round(plan["output_per_hour"], 4),
+                "price": round(price, 0),
+            }
+        )
 
     results.sort(key=lambda x: (-x["feasible"], -x["isk_per_hour_true"]))
     return results

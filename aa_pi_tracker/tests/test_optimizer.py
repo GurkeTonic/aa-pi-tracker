@@ -5,10 +5,13 @@ planet counts by qty_per_hour over-estimates the plan. ``production_plan`` must
 apply qty *before* rounding (single ceil).
 """
 
+# Standard Library
 import math
 
+# Django
 from django.test import SimpleTestCase
 
+# AA PI Tracker
 from aa_pi_tracker.pi_data import SCHEMATICS, production_plan
 from aa_pi_tracker.pi_data.formulas import expand_production, output_per_hour
 
@@ -24,7 +27,9 @@ class ProductionPlanQtyScalingTests(SimpleTestCase):
             base = production_plan(name, 1)
             scaled = production_plan(name, self.QTY)
             self.assertAlmostEqual(
-                scaled["output_per_hour"], base["output_per_hour"] * self.QTY, places=6,
+                scaled["output_per_hour"],
+                base["output_per_hour"] * self.QTY,
+                places=6,
                 msg=f"{name}: output_per_hour must scale linearly with qty",
             )
 
@@ -36,9 +41,15 @@ class ProductionPlanQtyScalingTests(SimpleTestCase):
         for name in self._tier2plus():
             base = production_plan(name, 1)
             scaled = production_plan(name, self.QTY)
-            for key in ("total_aifs", "total_miners", "total_planets", "factory_planets"):
+            for key in (
+                "total_aifs",
+                "total_miners",
+                "total_planets",
+                "factory_planets",
+            ):
                 self.assertLessEqual(
-                    scaled[key], self.QTY * base[key],
+                    scaled[key],
+                    self.QTY * base[key],
                     msg=f"{name}.{key}: {scaled[key]} > {self.QTY}×{base[key]} — double-rounding regression",
                 )
                 if scaled[key] < self.QTY * base[key]:
@@ -56,11 +67,13 @@ class ProductionPlanQtyScalingTests(SimpleTestCase):
             out_h = output_per_hour(name) * self.QTY
             factories, _ = expand_production([(name, out_h)])
             expected_aifs = sum(
-                math.ceil(c) for n, c in factories.items()
+                math.ceil(c)
+                for n, c in factories.items()
                 if SCHEMATICS.get(n, {}).get("tier") in (2, 3)
             )
             self.assertEqual(
-                scaled["total_aifs"], expected_aifs,
+                scaled["total_aifs"],
+                expected_aifs,
                 msg=f"{name}: total_aifs must be single-ceil of scaled factories",
             )
 
@@ -68,4 +81,6 @@ class ProductionPlanQtyScalingTests(SimpleTestCase):
         for name in self._tier2plus():
             p = production_plan(name, self.QTY)
             self.assertEqual(p["total_aifs"], sum(p["aifs"].values()))
-            self.assertEqual(p["total_planets"], p["total_miners"] + p["factory_planets"])
+            self.assertEqual(
+                p["total_planets"], p["total_miners"] + p["factory_planets"]
+            )

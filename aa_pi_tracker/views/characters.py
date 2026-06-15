@@ -1,9 +1,12 @@
+# Django
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+
+# Alliance Auth
 from esi.decorators import token_required
 
 from ..models import PiOwner
@@ -15,6 +18,7 @@ from .helpers import get_owners, nav_data
 @permission_required("aa_pi_tracker.view_pi")
 @token_required(scopes=["esi-planets.manage_planets.v1", "esi-skills.read_skills.v1"])
 def add_character(request, token):
+    # Alliance Auth
     from allianceauth.eveonline.models import EveCharacter
 
     try:
@@ -28,11 +32,17 @@ def add_character(request, token):
     )
     if created:
         sync_owner_pi_data.apply_async((owner.pk,), priority=3)
-        messages.success(request, f"{char.character_name} added — sync running in the background.")
+        messages.success(
+            request, f"{char.character_name} added — sync running in the background."
+        )
     elif owner.user == request.user:
-        messages.info(request, f"{char.character_name} is already registered to your account.")
+        messages.info(
+            request, f"{char.character_name} is already registered to your account."
+        )
     else:
-        messages.warning(request, f"{char.character_name} is registered to a different account.")
+        messages.warning(
+            request, f"{char.character_name} is registered to a different account."
+        )
     return redirect("aa_pi_tracker:index")
 
 

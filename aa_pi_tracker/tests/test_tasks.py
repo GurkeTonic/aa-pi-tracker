@@ -1,14 +1,18 @@
+# Standard Library
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+# Django
 from django.test import TestCase
 from django.utils import timezone
 
+# Alliance Auth
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.notifications.models import Notification
 from allianceauth.tests.auth_utils import AuthUtils
 
+# AA PI Tracker
 from aa_pi_tracker import tasks
 from aa_pi_tracker.models import (
     PiExtractorPin,
@@ -99,8 +103,7 @@ class TestSyncPinsFlagPreservation(TestCase):
     def _esi_returning(data):
         m = MagicMock()
         (
-            m.client.Planetary_Interaction.GetCharactersCharacterIdPlanetsPlanetId
-            .return_value.result.return_value
+            m.client.Planetary_Interaction.GetCharactersCharacterIdPlanetsPlanetId.return_value.result.return_value
         ) = data
         return m
 
@@ -166,7 +169,9 @@ class TestTryLinkProjectPlanets(TestCase):
     def test_skips_slot_without_planned_system(self):
         self._planet(40020004, "barren", "Dodixie")
         slot = PiProjectPlanet.objects.create(
-            project=self.project, planet=None, role="miner",
+            project=self.project,
+            planet=None,
+            role="miner",
             planned_char_id=self.owner.character.character_id,
             planned_planet_type="barren",
             planned_system_name="",
@@ -212,7 +217,9 @@ class TestPurgeOldMaintenanceLogs(TestCase):
     def test_purges_old_keeps_recent(self):
         today = timezone.localdate()
         old = PiMaintenanceLog.objects.create(
-            project=self.project, character_id=90000003, date=today - timedelta(days=100)
+            project=self.project,
+            character_id=90000003,
+            date=today - timedelta(days=100),
         )
         recent = PiMaintenanceLog.objects.create(
             project=self.project, character_id=90000003, date=today - timedelta(days=10)

@@ -1,3 +1,4 @@
+# Django
 from django.db.models import Count, Prefetch
 
 from ..models import PiOwner, PiPlanet, PiProjectPlanet
@@ -13,7 +14,9 @@ def get_char_slots(user=None, *, owners=None):
             PiOwner.objects.filter(user=user)
             .select_related("character")
             .prefetch_related(
-                Prefetch("planets", queryset=PiPlanet.objects.prefetch_related("extractors"))
+                Prefetch(
+                    "planets", queryset=PiPlanet.objects.prefetch_related("extractors")
+                )
             )
         )
 
@@ -21,14 +24,18 @@ def get_char_slots(user=None, *, owners=None):
     char_ids = [o.character.character_id for o in owners]
 
     locked_pks = set(
-        PiProjectPlanet.objects.filter(project__user__in=user_ids, planet__isnull=False)
-        .values_list("planet_id", flat=True)
+        PiProjectPlanet.objects.filter(
+            project__user__in=user_ids, planet__isnull=False
+        ).values_list("planet_id", flat=True)
     )
     planned_per_char = {
         row["planned_char_id"]: row["cnt"]
         for row in (
-            PiProjectPlanet.objects
-            .filter(project__user__in=user_ids, planet__isnull=True, planned_char_id__in=char_ids)
+            PiProjectPlanet.objects.filter(
+                project__user__in=user_ids,
+                planet__isnull=True,
+                planned_char_id__in=char_ids,
+            )
             .exclude(planned_char_id=None)
             .values("planned_char_id")
             .annotate(cnt=Count("pk"))
@@ -45,24 +52,27 @@ def get_char_slots(user=None, *, owners=None):
         already_planned = planned_per_char.get(owner.character.character_id, 0)
         new_slots = max(0, free_slots - len(free_colonized) - already_planned)
         ccu = owner.command_center_upgrades or 0
-        result.append({
-            "owner": owner,
-            "char_name": owner.character.character_name,
-            "char_id": owner.character.character_id,
-            "max_planets": max_p,
-            "locked_count": locked_count,
-            "free_slots": free_slots,
-            "free_colonized": free_colonized,
-            "new_slots": new_slots,
-            "command_center_upgrades": ccu,
-            "max_aifs": max_aifs_for_ccu(ccu),
-        })
+        result.append(
+            {
+                "owner": owner,
+                "char_name": owner.character.character_name,
+                "char_id": owner.character.character_id,
+                "max_planets": max_p,
+                "locked_count": locked_count,
+                "free_slots": free_slots,
+                "free_colonized": free_colonized,
+                "new_slots": new_slots,
+                "command_center_upgrades": ccu,
+                "max_aifs": max_aifs_for_ccu(ccu),
+            }
+        )
     return result
 
 
 def get_planet_pools(user=None, *, owners=None):
     """Planet pool summary for the optimizer page load."""
     from .planet_helpers import planet_info
+
     char_slots = get_char_slots(user, owners=owners)
     locked_count = sum(cs["locked_count"] for cs in char_slots)
     total_free_slots = sum(cs["free_slots"] for cs in char_slots)

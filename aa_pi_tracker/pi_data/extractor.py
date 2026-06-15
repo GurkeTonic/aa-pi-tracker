@@ -1,6 +1,6 @@
+# Standard Library
 import math
-from typing import Generator
-
+from collections.abc import Generator
 
 # Dogma attribute 1683 / 1687 — defaults from dgmAttributeTypes
 _DECAY_FACTOR = 0.012

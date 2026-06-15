@@ -11,11 +11,14 @@ Type, planet and system names are resolved from the local EVE SDE (``eve_sde``)
 elsewhere to avoid extra ESI calls.
 """
 
+# Standard Library
 from datetime import datetime, timezone
 
+# Django
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 
+# Alliance Auth
 from allianceauth.services.hooks import get_extension_logger
 from esi.exceptions import HTTPNotModified
 from esi.models import Token

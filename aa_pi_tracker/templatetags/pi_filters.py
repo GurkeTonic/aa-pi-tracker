@@ -1,3 +1,4 @@
+# Django
 from django import template
 
 register = template.Library()
@@ -48,7 +49,4 @@ def skill_pips_detailed(active, trained):
     """
     a = int(active) if active is not None else 0
     t = int(trained) if trained is not None else a
-    return [
-        "active" if i < a else "trained" if i < t else "empty"
-        for i in range(5)
-    ]
+    return ["active" if i < a else "trained" if i < t else "empty" for i in range(5)]

@@ -6,7 +6,7 @@
 
 An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to track EVE Online Planetary Interaction colonies — extractor expiry, factory output, and multi-character production planning.
 
----
+______________________________________________________________________
 
 ## Features
 
@@ -17,97 +17,109 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to track
 - **Bundled production data** — PI production data (P0 resources, P1–P4 recipes, factory cycle times) is bundled as static Python data, so no SDE lookup is needed for the production chain itself. Planet/system/region names, the system search and the optimizer routing do use the EVE SDE (see Requirements).
 - Celery Beat task registers automatically on startup — no `CELERYBEAT_SCHEDULE` entry in `local.py` required
 
----
+______________________________________________________________________
 
 ## Requirements
 
-| Requirement | Version |
-|---|---|
-| Alliance Auth | >= 5.0 |
-| Python | >= 3.10 |
-| django-esi | >= 4.0 |
-| django-eveonline-sde (`eve_sde`) | latest |
+| Requirement                      | Version |
+| -------------------------------- | ------- |
+| Alliance Auth                    | >= 5.0  |
+| Python                           | >= 3.10 |
+| django-esi                       | >= 4.0  |
+| django-eveonline-sde (`eve_sde`) | latest  |
 
 `django-eveonline-sde` provides the EVE Static Data Export as Django models. PI Tracker uses it for planet/system/region names, the system search and the optimizer's jump routing. It must be installed, added to `INSTALLED_APPS` and its SDE data loaded.
 
 ### ESI Scopes
 
-| Scope | Used for |
-|---|---|
-| `esi-planets.manage_planets.v1` | Planet list and pin details (extractors, factories) per character |
-| `esi-skills.read_skills.v1` | Character skill levels (Interplanetary Consolidation, Command Center Upgrades, Planetology, Remote Sensing) |
+| Scope                           | Used for                                                                                                    |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `esi-planets.manage_planets.v1` | Planet list and pin details (extractors, factories) per character                                           |
+| `esi-skills.read_skills.v1`     | Character skill levels (Interplanetary Consolidation, Command Center Upgrades, Planetology, Remote Sensing) |
 
 > **Note:** Despite the `manage_planets` scope name, only read endpoints are used — no modifications are made to in-game PI colonies.
 
----
+______________________________________________________________________
 
 ## Installation
 
 **Step 1 — Install the package**
 
-    pip install git+https://github.com/GurkeTonic/aa-pi-tracker.git
+```
+pip install git+https://github.com/GurkeTonic/aa-pi-tracker.git
+```
 
 **Step 2 — Add to `INSTALLED_APPS` in `local.py`**
 
-    INSTALLED_APPS += [
-        'eve_sde',
-        'aa_pi_tracker',
-    ]
+```
+INSTALLED_APPS += [
+    'eve_sde',
+    'aa_pi_tracker',
+]
+```
 
 Then load the SDE data once (see the django-eveonline-sde documentation), e.g.:
 
-    python manage.py eve_sde_load
+```
+python manage.py eve_sde_load
+```
 
 **Step 3 — Add ESI contact e-mail to `local.py`**
 
 Required by CCP for the ESI User-Agent header:
 
-    ESI_USER_CONTACT_EMAIL = "your@email.com"
+```
+ESI_USER_CONTACT_EMAIL = "your@email.com"
+```
 
 **Step 4 — Run migrations and collect static**
 
-    python manage.py migrate
-    python manage.py collectstatic --noinput
+```
+python manage.py migrate
+python manage.py collectstatic --noinput
+```
 
 **Step 5 — Restart services**
 
-    sudo supervisorctl restart myauth:
+```
+sudo supervisorctl restart myauth:
+```
 
----
+______________________________________________________________________
 
 ## Setup
 
 1. Open **PI Tracker** in the Alliance Auth navigation menu
-2. Go to the **Characters** tab and click **Add Character**
-3. Authenticate through ESI SSO — the `esi-planets.manage_planets.v1` scope is requested
-4. The first sync starts immediately after authorisation; subsequent syncs run on the configured interval
+1. Go to the **Characters** tab and click **Add Character**
+1. Authenticate through ESI SSO — the `esi-planets.manage_planets.v1` scope is requested
+1. The first sync starts immediately after authorisation; subsequent syncs run on the configured interval
 
 Multiple characters per user are supported. Each character is synced independently.
 
----
+______________________________________________________________________
 
 ## Permissions
 
-| Permission | Description |
-|---|---|
-| `aa_pi_tracker.view_pi` | Access to all PI Tracker tabs |
+| Permission                     | Description                                  |
+| ------------------------------ | -------------------------------------------- |
+| `aa_pi_tracker.view_pi`        | Access to all PI Tracker tabs                |
 | `aa_pi_tracker.manage_corp_pi` | Manage corp PI projects (corp-wide planning) |
 
 Assign via **Django Admin → Auth → Groups** or per state.
 
----
+______________________________________________________________________
 
 ## Settings
 
 Add to `myauth/settings/local.py` to override defaults:
 
-| Setting | Default | Description |
-|---|---|---|
-| `AA_PI_TRACKER_SYNC_INTERVAL` | `10` | PI data sync interval in minutes. The beat schedule uses `apply_offset` to spread load. |
-| `AA_PI_TRACKER_PRICE_INTERVAL` | `30` | Market price (Fuzzwork) sync interval in minutes. |
-| `ESI_USER_CONTACT_EMAIL` | — | **Required.** Included in every ESI request as part of the User-Agent. |
+| Setting                        | Default | Description                                                                             |
+| ------------------------------ | ------- | --------------------------------------------------------------------------------------- |
+| `AA_PI_TRACKER_SYNC_INTERVAL`  | `10`    | PI data sync interval in minutes. The beat schedule uses `apply_offset` to spread load. |
+| `AA_PI_TRACKER_PRICE_INTERVAL` | `30`    | Market price (Fuzzwork) sync interval in minutes.                                       |
+| `ESI_USER_CONTACT_EMAIL`       | —       | **Required.** Included in every ESI request as part of the User-Agent.                  |
 
----
+______________________________________________________________________
 
 ## Tabs
 
@@ -119,7 +131,7 @@ Add to `myauth/settings/local.py` to override defaults:
 
 **Projects** — User-defined production targets. Select a schematic and a target output rate; the module calculates the full factory chain (how many P1, P2, P3 factories are needed) and the required raw extraction rate. Assign planets to a project to compare actual vs. required capacity.
 
----
+______________________________________________________________________
 
 ## Technical Notes
 
@@ -127,13 +139,13 @@ Add to `myauth/settings/local.py` to override defaults:
 - Item, planet and solar-system names are resolved from the EVE SDE (`eve_sde` models); items not covered by the bundled P0 data fall back to an SDE name lookup
 - ESI responses are cached respecting the `Expires` header; minimum TTL is 60 seconds
 
----
+______________________________________________________________________
 
 ## Contributing
 
 Pull requests are welcome. For major changes please open an issue first.
 
----
+______________________________________________________________________
 
 ## License
 

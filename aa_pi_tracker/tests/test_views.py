@@ -1,6 +1,8 @@
+# Django
 from django.test import TestCase
 from django.urls import reverse
 
+# Alliance Auth
 from allianceauth.tests.auth_utils import AuthUtils
 
 
@@ -15,7 +17,9 @@ class TestIndexView(TestCase):
         AuthUtils.add_main_character(
             cls.user_with_perm, "Perm Char", 22222222, 98000001, "Test Corp", "TST"
         )
-        AuthUtils.add_permission_to_user_by_name("aa_pi_tracker.view_pi", cls.user_with_perm)
+        AuthUtils.add_permission_to_user_by_name(
+            "aa_pi_tracker.view_pi", cls.user_with_perm
+        )
 
     def test_redirect_when_not_logged_in(self):
         response = self.client.get(reverse("aa_pi_tracker:index"))

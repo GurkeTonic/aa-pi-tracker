@@ -1,8 +1,11 @@
+# Django
 from django.test import TestCase
 
+# Alliance Auth
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
+# AA PI Tracker
 from aa_pi_tracker.models import (
     General,
     PiExtractorPin,
@@ -52,6 +55,7 @@ class TestPiPlanet(TestCase):
         self.assertIn("Jita IV", str(self.planet))
 
     def test_unique_together(self):
+        # Django
         from django.db import IntegrityError
 
         with self.assertRaises(IntegrityError):

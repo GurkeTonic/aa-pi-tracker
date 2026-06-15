@@ -1,3 +1,4 @@
+# Django
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q
 from django.shortcuts import render
@@ -30,16 +31,18 @@ def index(request):
                 total_storage_isk += item.amount * prices.get(item.type_name, 0)
             for fac in planet.factories.all():
                 if fac.schematic_name and fac.schematic_name in SCHEMATICS:
-                    factory_isk_h += output_per_hour(fac.schematic_name) * prices.get(fac.schematic_name, 0)
+                    factory_isk_h += output_per_hour(fac.schematic_name) * prices.get(
+                        fac.schematic_name, 0
+                    )
 
     summary = {
-        "expired":          sum(1 for e in extractors if e["urgency"] == "expired"),
-        "critical":         sum(1 for e in extractors if e["urgency"] == "critical"),
-        "warning":          sum(1 for e in extractors if e["urgency"] == "warning"),
-        "active":           sum(1 for e in extractors if e["urgency"] == "ok"),
-        "total_planets":    sum(o["planet_count"] for o in owners_info),
+        "expired": sum(1 for e in extractors if e["urgency"] == "expired"),
+        "critical": sum(1 for e in extractors if e["urgency"] == "critical"),
+        "warning": sum(1 for e in extractors if e["urgency"] == "warning"),
+        "active": sum(1 for e in extractors if e["urgency"] == "ok"),
+        "total_planets": sum(o["planet_count"] for o in owners_info),
         "total_characters": len(owners_info),
-        "total_isk_h":      sum(e["isk_per_hour"] for e in extractors),
+        "total_isk_h": sum(e["isk_per_hour"] for e in extractors),
         "total_storage_isk": total_storage_isk,
     }
     snapshot: dict[str, dict] = {}
@@ -51,8 +54,15 @@ def index(request):
         snapshot[p]["isk_h"] += e["isk_per_hour"]
         snapshot[p]["chars"].add(e["character"])
     extraction_snapshot = sorted(
-        [{"product": k, "qty_h": v["qty_h"], "isk_h": v["isk_h"], "char_count": len(v["chars"])}
-         for k, v in snapshot.items()],
+        [
+            {
+                "product": k,
+                "qty_h": v["qty_h"],
+                "isk_h": v["isk_h"],
+                "char_count": len(v["chars"]),
+            }
+            for k, v in snapshot.items()
+        ],
         key=lambda x: -x["isk_h"],
     )
 
@@ -68,39 +78,46 @@ def index(request):
             obj.target_qty_per_hour * prices.get(obj.schematic_name, 0)
             for obj in proj.objectives.all()
         )
-        project_summaries.append({
-            "pk": proj.pk,
-            "name": proj.name,
-            "planet_count": len(proj.assigned_planets.all()),
-            "target_isk_h": target_isk_h,
-            "is_corp": False,
-        })
+        project_summaries.append(
+            {
+                "pk": proj.pk,
+                "name": proj.name,
+                "planet_count": len(proj.assigned_planets.all()),
+                "target_isk_h": target_isk_h,
+                "is_corp": False,
+            }
+        )
 
     # Corp projects where user is participant or creator
-    user_owner_pks = list(PiOwner.objects.filter(user=request.user).values_list("pk", flat=True))
-    corp_projects_qs = PiProject.objects.filter(
-        is_corp_project=True
-    ).filter(
-        Q(user=request.user) | Q(participants__pk__in=user_owner_pks)
-    ).distinct().prefetch_related("objectives", "assigned_planets")
+    user_owner_pks = list(
+        PiOwner.objects.filter(user=request.user).values_list("pk", flat=True)
+    )
+    corp_projects_qs = (
+        PiProject.objects.filter(is_corp_project=True)
+        .filter(Q(user=request.user) | Q(participants__pk__in=user_owner_pks))
+        .distinct()
+        .prefetch_related("objectives", "assigned_planets")
+    )
     for proj in corp_projects_qs:
         target_isk_h = sum(
             obj.target_qty_per_hour * prices.get(obj.schematic_name, 0)
             for obj in proj.objectives.all()
         )
-        project_summaries.append({
-            "pk": proj.pk,
-            "name": proj.name,
-            "planet_count": len(proj.assigned_planets.all()),
-            "target_isk_h": target_isk_h,
-            "is_corp": True,
-        })
+        project_summaries.append(
+            {
+                "pk": proj.pk,
+                "name": proj.name,
+                "planet_count": len(proj.assigned_planets.all()),
+                "target_isk_h": target_isk_h,
+                "is_corp": True,
+            }
+        )
 
     # Extractor timeline: upcoming expiry buckets
     timeline_expired = []
-    timeline_critical = []   # < 4h
-    timeline_today = []      # 4h – 24h
-    timeline_soon = []       # 24h – 72h
+    timeline_critical = []  # < 4h
+    timeline_today = []  # 4h – 24h
+    timeline_soon = []  # 24h – 72h
     for e in extractors:
         exp = e.get("expiry_time")
         if not exp or e["urgency"] == "expired":

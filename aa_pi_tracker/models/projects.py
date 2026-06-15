@@ -1,3 +1,4 @@
+# Django
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
@@ -27,7 +28,9 @@ class PiProject(models.Model):
 
 
 class PiProjectObjective(models.Model):
-    project = models.ForeignKey(PiProject, on_delete=models.CASCADE, related_name="objectives")
+    project = models.ForeignKey(
+        PiProject, on_delete=models.CASCADE, related_name="objectives"
+    )
     schematic_name = models.CharField(max_length=100)
     target_qty_per_hour = models.PositiveIntegerField(default=1)
 
@@ -50,8 +53,16 @@ class PiProjectPlanet(models.Model):
         (ROLE_FACTORY_P4, "P4 Factory"),
     ]
 
-    project = models.ForeignKey(PiProject, on_delete=models.CASCADE, related_name="assigned_planets")
-    planet = models.ForeignKey(PiPlanet, null=True, blank=True, on_delete=models.SET_NULL, related_name="project_links")
+    project = models.ForeignKey(
+        PiProject, on_delete=models.CASCADE, related_name="assigned_planets"
+    )
+    planet = models.ForeignKey(
+        PiPlanet,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="project_links",
+    )
     role = models.CharField(max_length=20, blank=True, default="", choices=ROLE_CHOICES)
     assigned_p0 = models.CharField(max_length=60, blank=True, default="")
     # Fields for planned (not yet colonized) slots — only set when planet is None
@@ -65,14 +76,20 @@ class PiProjectPlanet(models.Model):
         ordering = ["role", "planet__planet_name", "planned_char_name"]
 
     def __str__(self):
-        planet_label = self.planet.planet_name if self.planet else (self.planned_system_name or "unplanned")
+        planet_label = (
+            self.planet.planet_name
+            if self.planet
+            else (self.planned_system_name or "unplanned")
+        )
         return f"{self.project.name} — {self.role} — {planet_label}"
 
 
 class PiMaintenanceLog(models.Model):
     """Server-side per-day maintenance progress tracking (project × character × date)."""
 
-    project = models.ForeignKey(PiProject, on_delete=models.CASCADE, related_name="maintenance_logs")
+    project = models.ForeignKey(
+        PiProject, on_delete=models.CASCADE, related_name="maintenance_logs"
+    )
     character_id = models.BigIntegerField()
     date = models.DateField()
     # Current step (1-3). 4 means done.

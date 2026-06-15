@@ -4,12 +4,16 @@ Tests for previously untested views:
 - corp_projects views (manage_corp_pi permission)
 - _build_buildout_data, _build_maintenance_overview logic
 """
+
+# Django
 from django.test import TestCase
 from django.urls import reverse
 
+# Alliance Auth
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
+# AA PI Tracker
 from aa_pi_tracker.models import (
     PiExtractorPin,
     PiOwner,
@@ -19,15 +23,16 @@ from aa_pi_tracker.models import (
     PiProjectPlanet,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_user_view_pi(username, char_name, char_id):
     user = AuthUtils.create_member(username)
     AuthUtils.add_main_character_2(
-        user, char_name,
+        user,
+        char_name,
         character_id=char_id,
         corp_id=98000001,
         corp_name="Test Corp",
@@ -39,7 +44,8 @@ def _make_user_view_pi(username, char_name, char_id):
 def _make_user_manage_corp(username, char_name, char_id, corp_id=98000001):
     user = AuthUtils.create_member(username)
     AuthUtils.add_main_character_2(
-        user, char_name,
+        user,
+        char_name,
         character_id=char_id,
         corp_id=corp_id,
         corp_name="Test Corp",
@@ -66,6 +72,7 @@ def _make_planet(owner, planet_id, planet_name="Test IV", planet_type="barren"):
 # buildout_page
 # ---------------------------------------------------------------------------
 
+
 class TestBuildoutPage(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -81,20 +88,31 @@ class TestBuildoutPage(TestCase):
         )
 
     def test_unauthenticated_redirects(self):
-        res = self.client.get(reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk})
+        )
         self.assertEqual(res.status_code, 302)
 
     def test_no_permission_redirects(self):
         user_no_perm = AuthUtils.create_member("bo_noperm")
-        AuthUtils.add_main_character_2(user_no_perm, "No Perm", character_id=90000011,
-                                       corp_id=98000001, corp_name="Test Corp")
+        AuthUtils.add_main_character_2(
+            user_no_perm,
+            "No Perm",
+            character_id=90000011,
+            corp_id=98000001,
+            corp_name="Test Corp",
+        )
         self.client.force_login(user_no_perm)
-        res = self.client.get(reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk})
+        )
         self.assertEqual(res.status_code, 302)
 
     def test_returns_200_with_permission(self):
         self.client.force_login(self.user)
-        res = self.client.get(reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk})
+        )
         self.assertEqual(res.status_code, 200)
         self.assertTemplateUsed(res, "aa_pi_tracker/view/buildout.html")
 
@@ -102,12 +120,16 @@ class TestBuildoutPage(TestCase):
         other = _make_user_view_pi("bo_other", "Other BO", 90000012)
         other_project = PiProject.objects.create(user=other, name="Other BO Project")
         self.client.force_login(self.user)
-        res = self.client.get(reverse("aa_pi_tracker:buildout_page", kwargs={"pk": other_project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:buildout_page", kwargs={"pk": other_project.pk})
+        )
         self.assertEqual(res.status_code, 404)
 
     def test_context_contains_chars_data(self):
         self.client.force_login(self.user)
-        res = self.client.get(reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:buildout_page", kwargs={"pk": self.project.pk})
+        )
         self.assertIn("chars_data", res.context)
         self.assertIn("project", res.context)
 
@@ -115,6 +137,7 @@ class TestBuildoutPage(TestCase):
 # ---------------------------------------------------------------------------
 # maintenance_page
 # ---------------------------------------------------------------------------
+
 
 class TestMaintenancePage(TestCase):
     @classmethod
@@ -131,20 +154,31 @@ class TestMaintenancePage(TestCase):
         )
 
     def test_unauthenticated_redirects(self):
-        res = self.client.get(reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk})
+        )
         self.assertEqual(res.status_code, 302)
 
     def test_no_permission_redirects(self):
         user_no_perm = AuthUtils.create_member("maint_noperm")
-        AuthUtils.add_main_character_2(user_no_perm, "No Perm Maint", character_id=90000021,
-                                       corp_id=98000001, corp_name="Test Corp")
+        AuthUtils.add_main_character_2(
+            user_no_perm,
+            "No Perm Maint",
+            character_id=90000021,
+            corp_id=98000001,
+            corp_name="Test Corp",
+        )
         self.client.force_login(user_no_perm)
-        res = self.client.get(reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk})
+        )
         self.assertEqual(res.status_code, 302)
 
     def test_returns_200_with_permission(self):
         self.client.force_login(self.user)
-        res = self.client.get(reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk})
+        )
         self.assertEqual(res.status_code, 200)
         self.assertTemplateUsed(res, "aa_pi_tracker/view/maintenance.html")
 
@@ -152,19 +186,30 @@ class TestMaintenancePage(TestCase):
         other = _make_user_view_pi("maint_other", "Other Maint", 90000022)
         other_project = PiProject.objects.create(user=other, name="Other Maint Project")
         self.client.force_login(self.user)
-        res = self.client.get(reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": other_project.pk}))
+        res = self.client.get(
+            reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": other_project.pk})
+        )
         self.assertEqual(res.status_code, 404)
 
     def test_context_keys(self):
         self.client.force_login(self.user)
-        res = self.client.get(reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk}))
-        for key in ("chars_data", "project", "total_expired", "total_critical", "total_chars"):
+        res = self.client.get(
+            reverse("aa_pi_tracker:maintenance_page", kwargs={"pk": self.project.pk})
+        )
+        for key in (
+            "chars_data",
+            "project",
+            "total_expired",
+            "total_critical",
+            "total_chars",
+        ):
             self.assertIn(key, res.context)
 
 
 # ---------------------------------------------------------------------------
 # maintenance_char_page
 # ---------------------------------------------------------------------------
+
 
 class TestMaintenanceCharPage(TestCase):
     @classmethod
@@ -183,16 +228,20 @@ class TestMaintenanceCharPage(TestCase):
     def test_returns_200_with_permission(self):
         self.client.force_login(self.user)
         res = self.client.get(
-            reverse("aa_pi_tracker:maintenance_char_page",
-                    kwargs={"pk": self.project.pk, "char_pk": 90000030})
+            reverse(
+                "aa_pi_tracker:maintenance_char_page",
+                kwargs={"pk": self.project.pk, "char_pk": 90000030},
+            )
         )
         self.assertEqual(res.status_code, 200)
         self.assertTemplateUsed(res, "aa_pi_tracker/view/maintenance_char.html")
 
     def test_unauthenticated_redirects(self):
         res = self.client.get(
-            reverse("aa_pi_tracker:maintenance_char_page",
-                    kwargs={"pk": self.project.pk, "char_pk": 90000030})
+            reverse(
+                "aa_pi_tracker:maintenance_char_page",
+                kwargs={"pk": self.project.pk, "char_pk": 90000030},
+            )
         )
         self.assertEqual(res.status_code, 302)
 
@@ -201,24 +250,35 @@ class TestMaintenanceCharPage(TestCase):
         other_project = PiProject.objects.create(user=other, name="MC Other Project")
         self.client.force_login(self.user)
         res = self.client.get(
-            reverse("aa_pi_tracker:maintenance_char_page",
-                    kwargs={"pk": other_project.pk, "char_pk": 90000030})
+            reverse(
+                "aa_pi_tracker:maintenance_char_page",
+                kwargs={"pk": other_project.pk, "char_pk": 90000030},
+            )
         )
         self.assertEqual(res.status_code, 404)
 
     def test_context_keys(self):
         self.client.force_login(self.user)
         res = self.client.get(
-            reverse("aa_pi_tracker:maintenance_char_page",
-                    kwargs={"pk": self.project.pk, "char_pk": 90000030})
+            reverse(
+                "aa_pi_tracker:maintenance_char_page",
+                kwargs={"pk": self.project.pk, "char_pk": 90000030},
+            )
         )
-        for key in ("project", "char_pk", "step1_planets", "step2_planets", "step3_planets"):
+        for key in (
+            "project",
+            "char_pk",
+            "step1_planets",
+            "step2_planets",
+            "step3_planets",
+        ):
             self.assertIn(key, res.context)
 
 
 # ---------------------------------------------------------------------------
 # corp_projects_member_page
 # ---------------------------------------------------------------------------
+
 
 class TestCorpProjectsMemberPage(TestCase):
     @classmethod
@@ -231,8 +291,13 @@ class TestCorpProjectsMemberPage(TestCase):
 
     def test_no_permission_redirects(self):
         user_no_perm = AuthUtils.create_member("cpm_noperm")
-        AuthUtils.add_main_character_2(user_no_perm, "No Perm CPM", character_id=90000041,
-                                       corp_id=98000001, corp_name="Test Corp")
+        AuthUtils.add_main_character_2(
+            user_no_perm,
+            "No Perm CPM",
+            character_id=90000041,
+            corp_id=98000001,
+            corp_name="Test Corp",
+        )
         self.client.force_login(user_no_perm)
         res = self.client.get(reverse("aa_pi_tracker:corp_projects_member"))
         self.assertEqual(res.status_code, 302)
@@ -247,6 +312,7 @@ class TestCorpProjectsMemberPage(TestCase):
 # ---------------------------------------------------------------------------
 # corp_projects_page (requires manage_corp_pi)
 # ---------------------------------------------------------------------------
+
 
 class TestCorpProjectsPage(TestCase):
     @classmethod
@@ -280,6 +346,7 @@ class TestCorpProjectsPage(TestCase):
 # ---------------------------------------------------------------------------
 # toggle_share_character
 # ---------------------------------------------------------------------------
+
 
 class TestToggleShareCharacter(TestCase):
     @classmethod
@@ -332,6 +399,7 @@ class TestToggleShareCharacter(TestCase):
 # create_corp_project
 # ---------------------------------------------------------------------------
 
+
 class TestCreateCorpProject(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -348,19 +416,25 @@ class TestCreateCorpProject(TestCase):
         self.assertTrue(data["ok"])
         self.assertEqual(data["name"], "Corp Alpha")
         self.assertTrue(
-            PiProject.objects.filter(user=self.manager, name="Corp Alpha", is_corp_project=True).exists()
+            PiProject.objects.filter(
+                user=self.manager, name="Corp Alpha", is_corp_project=True
+            ).exists()
         )
 
     def test_create_corp_project_missing_name_returns_400(self):
         self.client.force_login(self.manager)
-        res = self.client.post(reverse("aa_pi_tracker:create_corp_project"), {"name": ""})
+        res = self.client.post(
+            reverse("aa_pi_tracker:create_corp_project"), {"name": ""}
+        )
         self.assertEqual(res.status_code, 400)
         self.assertFalse(res.json()["ok"])
 
     def test_create_corp_project_requires_manage_corp_pi(self):
         view_only = _make_user_view_pi("ccp_viewonly", "CCP View", 90000071)
         self.client.force_login(view_only)
-        res = self.client.post(reverse("aa_pi_tracker:create_corp_project"), {"name": "Denied"})
+        res = self.client.post(
+            reverse("aa_pi_tracker:create_corp_project"), {"name": "Denied"}
+        )
         self.assertEqual(res.status_code, 302)
 
     def test_requires_post(self):
@@ -372,6 +446,7 @@ class TestCreateCorpProject(TestCase):
 # ---------------------------------------------------------------------------
 # delete_corp_project
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteCorpProject(TestCase):
     @classmethod
@@ -416,10 +491,13 @@ class TestDeleteCorpProject(TestCase):
 # corp_project_set_participants
 # ---------------------------------------------------------------------------
 
+
 class TestCorpProjectSetParticipants(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.manager = _make_user_manage_corp("prt_manager", "PRT Manager", 90000090, corp_id=98000099)
+        cls.manager = _make_user_manage_corp(
+            "prt_manager", "PRT Manager", 90000090, corp_id=98000099
+        )
         cls.project = PiProject.objects.create(
             user=cls.manager, name="Participants Project", is_corp_project=True
         )
@@ -436,7 +514,10 @@ class TestCorpProjectSetParticipants(TestCase):
     def test_set_participants_success(self):
         self.client.force_login(self.manager)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_set_participants", kwargs={"pk": self.project.pk}),
+            reverse(
+                "aa_pi_tracker:corp_project_set_participants",
+                kwargs={"pk": self.project.pk},
+            ),
             {"owner_pks[]": [self.member_owner.pk]},
         )
         self.assertEqual(res.status_code, 200)
@@ -447,7 +528,10 @@ class TestCorpProjectSetParticipants(TestCase):
         view_only = _make_user_view_pi("prt_view", "PRT View", 90000092)
         self.client.force_login(view_only)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_set_participants", kwargs={"pk": self.project.pk}),
+            reverse(
+                "aa_pi_tracker:corp_project_set_participants",
+                kwargs={"pk": self.project.pk},
+            ),
             {"owner_pks[]": []},
         )
         self.assertEqual(res.status_code, 302)
@@ -456,6 +540,7 @@ class TestCorpProjectSetParticipants(TestCase):
 # ---------------------------------------------------------------------------
 # corp_project_add_objective
 # ---------------------------------------------------------------------------
+
 
 class TestCorpProjectAddObjective(TestCase):
     @classmethod
@@ -468,7 +553,10 @@ class TestCorpProjectAddObjective(TestCase):
     def test_add_valid_objective(self):
         self.client.force_login(self.manager)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_add_objective", kwargs={"pk": self.project.pk}),
+            reverse(
+                "aa_pi_tracker:corp_project_add_objective",
+                kwargs={"pk": self.project.pk},
+            ),
             {"schematic_name": "Bacteria", "target_qty_per_hour": "3"},
         )
         self.assertEqual(res.status_code, 200)
@@ -476,13 +564,18 @@ class TestCorpProjectAddObjective(TestCase):
         self.assertTrue(data["ok"])
         self.assertEqual(data["schematic_name"], "Bacteria")
         self.assertTrue(
-            PiProjectObjective.objects.filter(project=self.project, schematic_name="Bacteria").exists()
+            PiProjectObjective.objects.filter(
+                project=self.project, schematic_name="Bacteria"
+            ).exists()
         )
 
     def test_add_unknown_schematic_returns_400(self):
         self.client.force_login(self.manager)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_add_objective", kwargs={"pk": self.project.pk}),
+            reverse(
+                "aa_pi_tracker:corp_project_add_objective",
+                kwargs={"pk": self.project.pk},
+            ),
             {"schematic_name": "Tritanium", "target_qty_per_hour": "1"},
         )
         self.assertEqual(res.status_code, 400)
@@ -490,10 +583,15 @@ class TestCorpProjectAddObjective(TestCase):
 
     def test_add_objective_to_other_users_project_returns_404(self):
         other = _make_user_manage_corp("cao_other", "CAO Other", 90000031)
-        other_project = PiProject.objects.create(user=other, name="Other CAO", is_corp_project=True)
+        other_project = PiProject.objects.create(
+            user=other, name="Other CAO", is_corp_project=True
+        )
         self.client.force_login(self.manager)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_add_objective", kwargs={"pk": other_project.pk}),
+            reverse(
+                "aa_pi_tracker:corp_project_add_objective",
+                kwargs={"pk": other_project.pk},
+            ),
             {"schematic_name": "Bacteria", "target_qty_per_hour": "1"},
         )
         self.assertEqual(res.status_code, 404)
@@ -502,24 +600,36 @@ class TestCorpProjectAddObjective(TestCase):
         """Adding the same schematic twice updates the quantity (no duplicate)."""
         self.client.force_login(self.manager)
         self.client.post(
-            reverse("aa_pi_tracker:corp_project_add_objective", kwargs={"pk": self.project.pk}),
+            reverse(
+                "aa_pi_tracker:corp_project_add_objective",
+                kwargs={"pk": self.project.pk},
+            ),
             {"schematic_name": "Water", "target_qty_per_hour": "2"},
         )
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_add_objective", kwargs={"pk": self.project.pk}),
+            reverse(
+                "aa_pi_tracker:corp_project_add_objective",
+                kwargs={"pk": self.project.pk},
+            ),
             {"schematic_name": "Water", "target_qty_per_hour": "5"},
         )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(
-            PiProjectObjective.objects.filter(project=self.project, schematic_name="Water").count(), 1
+            PiProjectObjective.objects.filter(
+                project=self.project, schematic_name="Water"
+            ).count(),
+            1,
         )
-        obj = PiProjectObjective.objects.get(project=self.project, schematic_name="Water")
+        obj = PiProjectObjective.objects.get(
+            project=self.project, schematic_name="Water"
+        )
         self.assertEqual(obj.target_qty_per_hour, 5)
 
 
 # ---------------------------------------------------------------------------
 # corp_project_delete_objective
 # ---------------------------------------------------------------------------
+
 
 class TestCorpProjectDeleteObjective(TestCase):
     @classmethod
@@ -535,21 +645,31 @@ class TestCorpProjectDeleteObjective(TestCase):
     def test_delete_objective_success(self):
         self.client.force_login(self.manager)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_delete_objective", kwargs={"pk": self.objective.pk})
+            reverse(
+                "aa_pi_tracker:corp_project_delete_objective",
+                kwargs={"pk": self.objective.pk},
+            )
         )
         self.assertEqual(res.status_code, 200)
         self.assertTrue(res.json()["ok"])
-        self.assertFalse(PiProjectObjective.objects.filter(pk=self.objective.pk).exists())
+        self.assertFalse(
+            PiProjectObjective.objects.filter(pk=self.objective.pk).exists()
+        )
 
     def test_delete_objective_other_user_returns_404(self):
         other = _make_user_manage_corp("cdo_other", "CDO Other", 90000033)
-        other_project = PiProject.objects.create(user=other, name="CDO Other", is_corp_project=True)
+        other_project = PiProject.objects.create(
+            user=other, name="CDO Other", is_corp_project=True
+        )
         other_obj = PiProjectObjective.objects.create(
             project=other_project, schematic_name="Water", target_qty_per_hour=1
         )
         self.client.force_login(self.manager)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_delete_objective", kwargs={"pk": other_obj.pk})
+            reverse(
+                "aa_pi_tracker:corp_project_delete_objective",
+                kwargs={"pk": other_obj.pk},
+            )
         )
         self.assertEqual(res.status_code, 404)
 
@@ -560,7 +680,10 @@ class TestCorpProjectDeleteObjective(TestCase):
         view_only = _make_user_view_pi("cdo_view", "CDO View", 90000034)
         self.client.force_login(view_only)
         res = self.client.post(
-            reverse("aa_pi_tracker:corp_project_delete_objective", kwargs={"pk": objective.pk})
+            reverse(
+                "aa_pi_tracker:corp_project_delete_objective",
+                kwargs={"pk": objective.pk},
+            )
         )
         self.assertEqual(res.status_code, 302)
 
@@ -569,28 +692,37 @@ class TestCorpProjectDeleteObjective(TestCase):
 # _build_buildout_data logic
 # ---------------------------------------------------------------------------
 
+
 class TestBuildBuildoutData(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = _make_user_view_pi("bbd_user", "BBD Char", 90000035)
         cls.owner = _make_owner(cls.user, 90000035)
         cls.planet_miner = _make_planet(cls.owner, 40004000, "BBD Miner IV", "barren")
-        cls.planet_factory = _make_planet(cls.owner, 40004001, "BBD Factory IV", "barren")
+        cls.planet_factory = _make_planet(
+            cls.owner, 40004001, "BBD Factory IV", "barren"
+        )
         cls.project = PiProject.objects.create(user=cls.user, name="BBD Project")
         PiProjectObjective.objects.create(
             project=cls.project, schematic_name="Bacteria", target_qty_per_hour=1
         )
         PiProjectPlanet.objects.create(
-            project=cls.project, planet=cls.planet_miner,
-            role=PiProjectPlanet.ROLE_MINER, assigned_p0="Microorganisms"
+            project=cls.project,
+            planet=cls.planet_miner,
+            role=PiProjectPlanet.ROLE_MINER,
+            assigned_p0="Microorganisms",
         )
         PiProjectPlanet.objects.create(
-            project=cls.project, planet=cls.planet_factory,
-            role=PiProjectPlanet.ROLE_FACTORY, assigned_p0=""
+            project=cls.project,
+            planet=cls.planet_factory,
+            role=PiProjectPlanet.ROLE_FACTORY,
+            assigned_p0="",
         )
 
     def test_miner_entry_has_role_and_extracts(self):
+        # AA PI Tracker
         from aa_pi_tracker.views.buildout import _build_buildout_data
+
         chars_data = _build_buildout_data(self.project)
         # Flatten all planets from all characters
         all_planets = [p for c in chars_data for p in c["planets"]]
@@ -599,23 +731,32 @@ class TestBuildBuildoutData(TestCase):
         self.assertEqual(miners[0]["extracts"], "Microorganisms")
 
     def test_factory_entry_has_aif_breakdown(self):
+        # AA PI Tracker
         from aa_pi_tracker.views.buildout import _build_buildout_data
+
         chars_data = _build_buildout_data(self.project)
         all_planets = [p for c in chars_data for p in c["planets"]]
-        factories = [p for p in all_planets if p["role"] in (
-            PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4
-        )]
+        factories = [
+            p
+            for p in all_planets
+            if p["role"]
+            in (PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4)
+        ]
         self.assertEqual(len(factories), 1)
         self.assertIsInstance(factories[0]["aif_breakdown"], list)
 
     def test_user_filter_excludes_other_users(self):
+        # AA PI Tracker
         from aa_pi_tracker.views.buildout import _build_buildout_data
+
         other = _make_user_view_pi("bbd_other", "BBD Other", 90000036)
         other_owner = _make_owner(other, 90000036)
         other_planet = _make_planet(other_owner, 40004002, "BBD Other IV", "barren")
         PiProjectPlanet.objects.create(
-            project=self.project, planet=other_planet,
-            role=PiProjectPlanet.ROLE_MINER, assigned_p0="Base Metals"
+            project=self.project,
+            planet=other_planet,
+            role=PiProjectPlanet.ROLE_MINER,
+            assigned_p0="Base Metals",
         )
         chars_data_filtered = _build_buildout_data(self.project, user_filter=self.user)
         chars_data_all = _build_buildout_data(self.project, user_filter=None)
@@ -624,7 +765,9 @@ class TestBuildBuildoutData(TestCase):
         self.assertLess(total_filtered, total_all)
 
     def test_empty_project_returns_empty_list(self):
+        # AA PI Tracker
         from aa_pi_tracker.views.buildout import _build_buildout_data
+
         empty_project = PiProject.objects.create(user=self.user, name="Empty BBD")
         result = _build_buildout_data(empty_project)
         self.assertEqual(result, [])
@@ -634,18 +777,25 @@ class TestBuildBuildoutData(TestCase):
 # _build_maintenance_overview logic
 # ---------------------------------------------------------------------------
 
+
 class TestBuildMaintenanceOverview(TestCase):
     @classmethod
     def setUpTestData(cls):
-        from django.utils import timezone
+        # Standard Library
         from datetime import timedelta
+
+        # Django
+        from django.utils import timezone
+
         cls.user = _make_user_view_pi("bmo_user", "BMO Char", 90000037)
         cls.owner = _make_owner(cls.user, 90000037)
         cls.planet = _make_planet(cls.owner, 40005000, "BMO IV", "barren")
         cls.project = PiProject.objects.create(user=cls.user, name="BMO Project")
         cls.pp = PiProjectPlanet.objects.create(
-            project=cls.project, planet=cls.planet,
-            role=PiProjectPlanet.ROLE_MINER, assigned_p0="Base Metals"
+            project=cls.project,
+            planet=cls.planet,
+            role=PiProjectPlanet.ROLE_MINER,
+            assigned_p0="Base Metals",
         )
         now = timezone.now()
         # Expired extractor
@@ -659,8 +809,12 @@ class TestBuildMaintenanceOverview(TestCase):
         )
 
     def test_expired_extractor_counted(self):
-        from aa_pi_tracker.views.maintenance import _build_maintenance_overview
+        # Django
         from django.utils import timezone
+
+        # AA PI Tracker
+        from aa_pi_tracker.views.maintenance import _build_maintenance_overview
+
         result = _build_maintenance_overview(self.project, timezone.now())
         self.assertEqual(len(result), 1)
         char_entry = result[0]
@@ -668,25 +822,39 @@ class TestBuildMaintenanceOverview(TestCase):
         self.assertTrue(char_entry["has_issues"])
 
     def test_user_filter_excludes_other_users(self):
-        from aa_pi_tracker.views.maintenance import _build_maintenance_overview
+        # Django
         from django.utils import timezone
+
+        # AA PI Tracker
+        from aa_pi_tracker.views.maintenance import _build_maintenance_overview
+
         other = _make_user_view_pi("bmo_other", "BMO Other", 90000038)
         other_owner = _make_owner(other, 90000038)
         other_planet = _make_planet(other_owner, 40005001, "BMO Other IV", "barren")
         PiProjectPlanet.objects.create(
-            project=self.project, planet=other_planet,
-            role=PiProjectPlanet.ROLE_MINER, assigned_p0="Base Metals"
+            project=self.project,
+            planet=other_planet,
+            role=PiProjectPlanet.ROLE_MINER,
+            assigned_p0="Base Metals",
         )
-        filtered = _build_maintenance_overview(self.project, timezone.now(), user_filter=self.user)
-        all_chars = _build_maintenance_overview(self.project, timezone.now(), user_filter=None)
+        filtered = _build_maintenance_overview(
+            self.project, timezone.now(), user_filter=self.user
+        )
+        all_chars = _build_maintenance_overview(
+            self.project, timezone.now(), user_filter=None
+        )
         filter_names = {c["char_name"] for c in filtered}
         all_names = {c["char_name"] for c in all_chars}
         self.assertNotIn("BMO Other", filter_names)
         self.assertIn("BMO Other", all_names)
 
     def test_empty_project_returns_empty(self):
-        from aa_pi_tracker.views.maintenance import _build_maintenance_overview
+        # Django
         from django.utils import timezone
+
+        # AA PI Tracker
+        from aa_pi_tracker.views.maintenance import _build_maintenance_overview
+
         empty = PiProject.objects.create(user=self.user, name="Empty BMO")
         result = _build_maintenance_overview(empty, timezone.now())
         self.assertEqual(result, [])

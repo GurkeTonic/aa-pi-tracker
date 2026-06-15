@@ -1,5 +1,7 @@
+# Standard Library
 import json
 
+# Django
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import Http404, JsonResponse
 from django.shortcuts import render
@@ -8,16 +10,19 @@ from django.views.decorators.http import require_POST
 
 from ..models import PiMaintenanceLog, PiOwner, PiProjectPlanet
 from ..pi_data import get_item_tier
-from .helpers import fmt_remaining, get_owners, nav_data
-from .helpers import get_project_or_404
+from .helpers import fmt_remaining, get_owners, get_project_or_404, nav_data
 from .optimizer import _build_project_routing
 
 
 def _build_maintenance_overview(project, now, user_filter=None):
     chars: dict = {}
-    for pp in project.assigned_planets.select_related(
-        "planet__owner__user", "planet__owner__character"
-    ).prefetch_related("planet__extractors", "planet__storage_items").all():
+    for pp in (
+        project.assigned_planets.select_related(
+            "planet__owner__user", "planet__owner__character"
+        )
+        .prefetch_related("planet__extractors", "planet__storage_items")
+        .all()
+    ):
         if not pp.planet or not pp.planet.owner:
             continue
         if user_filter and pp.planet.owner.user != user_filter:
@@ -27,9 +32,12 @@ def _build_maintenance_overview(project, now, user_filter=None):
         key = (char_id, char_name)
         if key not in chars:
             chars[key] = {
-                "char_id": char_id, "char_name": char_name,
-                "expired_count": 0, "critical_count": 0,
-                "pickup_count": 0, "delivery_count": 0,
+                "char_id": char_id,
+                "char_name": char_name,
+                "expired_count": 0,
+                "critical_count": 0,
+                "pickup_count": 0,
+                "delivery_count": 0,
             }
         planet = pp.planet
         if pp.role == PiProjectPlanet.ROLE_MINER:
@@ -46,9 +54,10 @@ def _build_maintenance_overview(project, now, user_filter=None):
         elif pp.role in (PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4):
             chars[key]["delivery_count"] += 1
 
-    result = sorted(chars.values(), key=lambda x: (
-        -(x["expired_count"] + x["critical_count"]), x["char_name"]
-    ))
+    result = sorted(
+        chars.values(),
+        key=lambda x: (-(x["expired_count"] + x["critical_count"]), x["char_name"]),
+    )
     for c in result:
         c["has_issues"] = c["expired_count"] + c["critical_count"] > 0
     return result
@@ -69,7 +78,9 @@ def maintenance_page(request, pk):
     total_expired = sum(c["expired_count"] for c in chars_data)
     total_critical = sum(c["critical_count"] for c in chars_data)
     # Fetch today's maintenance logs for all chars in this project
+    # Django
     from django.utils.timezone import localdate
+
     today = localdate()
     char_ids = [c["char_id"] for c in chars_data if c["char_id"]]
     logs_today = {
@@ -104,11 +115,15 @@ def maintenance_char_page(request, pk, char_pk):
     if project.is_corp_project:
         if project.user == request.user:
             # Manager: only participants' chars allowed
-            if not project.participants.filter(character__character_id=char_pk).exists():
+            if not project.participants.filter(
+                character__character_id=char_pk
+            ).exists():
                 raise Http404
         else:
             # Participant: only own chars
-            if not PiOwner.objects.filter(user=request.user, character__character_id=char_pk).exists():
+            if not PiOwner.objects.filter(
+                user=request.user, character__character_id=char_pk
+            ).exists():
                 raise Http404
     owners = get_owners(request.user)
     now = timezone.now()
@@ -121,9 +136,11 @@ def maintenance_char_page(request, pk, char_pk):
 
     urgency_order = {"expired": 0, "critical": 1, "warning": 2, "ok": 3}
 
-    for pp in project.assigned_planets.select_related(
-        "planet__owner__character"
-    ).prefetch_related("planet__extractors", "planet__storage_items").all():
+    for pp in (
+        project.assigned_planets.select_related("planet__owner__character")
+        .prefetch_related("planet__extractors", "planet__storage_items")
+        .all()
+    ):
         if not pp.planet or not pp.planet.owner:
             continue
         if pp.planet.owner.character.character_id != char_pk:
@@ -142,59 +159,80 @@ def maintenance_char_page(request, pk, char_pk):
                     elapsed_s = (now - ext.install_time).total_seconds()
                     if total_s > 0:
                         progress = min(100, max(0, int(elapsed_s / total_s * 100)))
-                extractors.append({
-                    "resource": ext.product_name or "Unknown",
-                    "urgency": urgency,
-                    "time_remaining": time_remaining,
-                    "progress": progress,
-                })
+                extractors.append(
+                    {
+                        "resource": ext.product_name or "Unknown",
+                        "urgency": urgency,
+                        "time_remaining": time_remaining,
+                        "progress": progress,
+                    }
+                )
             worst = (
-                min(extractors, key=lambda e: urgency_order.get(e["urgency"], 3))["urgency"]
-                if extractors else "ok"
+                min(extractors, key=lambda e: urgency_order.get(e["urgency"], 3))[
+                    "urgency"
+                ]
+                if extractors
+                else "ok"
             )
-            step1_planets.append({
-                "pk": pp.pk,
-                "planet_name": planet.planet_name,
-                "planet_type": planet.planet_type,
-                "system": planet.solar_system_name or "",
-                "extractors": extractors,
-                "worst_urgency": worst,
-            })
+            step1_planets.append(
+                {
+                    "pk": pp.pk,
+                    "planet_name": planet.planet_name,
+                    "planet_type": planet.planet_type,
+                    "system": planet.solar_system_name or "",
+                    "extractors": extractors,
+                    "worst_urgency": worst,
+                }
+            )
 
             routing = miner_routing.get(pp.pk, {})
             items = []
             for si in planet.storage_items.all():
-                items.append({
-                    "name": si.type_name,
-                    "tier": get_item_tier(si.type_name),
-                    "qty": si.amount,
-                    "weekly_plan": routing.get("weekly_qty", 0) if routing.get("p1") == si.type_name else 0,
-                })
+                items.append(
+                    {
+                        "name": si.type_name,
+                        "tier": get_item_tier(si.type_name),
+                        "qty": si.amount,
+                        "weekly_plan": (
+                            routing.get("weekly_qty", 0)
+                            if routing.get("p1") == si.type_name
+                            else 0
+                        ),
+                    }
+                )
             p1_name = routing.get("p1")
             if p1_name and not any(i["name"] == p1_name for i in items):
-                items.append({
-                    "name": p1_name, "tier": 1,
-                    "qty": 0, "weekly_plan": routing.get("weekly_qty", 0),
-                })
-            step2_planets.append({
-                "pk": pp.pk,
-                "planet_name": planet.planet_name,
-                "planet_type": planet.planet_type,
-                "system": planet.solar_system_name or "",
-                "items": items,
-                "dests": routing.get("dests", []),
-            })
+                items.append(
+                    {
+                        "name": p1_name,
+                        "tier": 1,
+                        "qty": 0,
+                        "weekly_plan": routing.get("weekly_qty", 0),
+                    }
+                )
+            step2_planets.append(
+                {
+                    "pk": pp.pk,
+                    "planet_name": planet.planet_name,
+                    "planet_type": planet.planet_type,
+                    "system": planet.solar_system_name or "",
+                    "items": items,
+                    "dests": routing.get("dests", []),
+                }
+            )
 
         elif pp.role in (PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4):
             fin = factory_inputs.get(pp.pk, {})
-            step3_planets.append({
-                "pk": pp.pk,
-                "planet_name": planet.planet_name,
-                "planet_type": planet.planet_type,
-                "role": pp.role,
-                "system": planet.solar_system_name or "",
-                "receives": fin.get("receives", []),
-            })
+            step3_planets.append(
+                {
+                    "pk": pp.pk,
+                    "planet_name": planet.planet_name,
+                    "planet_type": planet.planet_type,
+                    "role": pp.role,
+                    "system": planet.solar_system_name or "",
+                    "receives": fin.get("receives", []),
+                }
+            )
 
     log = PiMaintenanceLog.for_today(project.pk, char_pk)
     ctx = {
@@ -226,11 +264,15 @@ def maintenance_save_state(request, pk, char_pk):
         if project.user == request.user:
             # Manager: only participants' chars allowed (mirror of the GET guard;
             # otherwise a manager could create an orphan log for any character_id).
-            if not project.participants.filter(character__character_id=char_pk).exists():
+            if not project.participants.filter(
+                character__character_id=char_pk
+            ).exists():
                 return JsonResponse({"error": "forbidden"}, status=403)
         else:
             # Participant: only own chars
-            if not PiOwner.objects.filter(user=request.user, character__character_id=char_pk).exists():
+            if not PiOwner.objects.filter(
+                user=request.user, character__character_id=char_pk
+            ).exists():
                 return JsonResponse({"error": "forbidden"}, status=403)
     try:
         data = json.loads(request.body)

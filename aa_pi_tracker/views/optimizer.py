@@ -1,5 +1,7 @@
+# Standard Library
 import json
 
+# Django
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -25,6 +27,7 @@ def _build_project_routing(project):
     factory_inputs: {pp_pk: {"receives": [{"p1", "weekly_qty", "sources": [...]}]}}
     """
     from ..models import PiProjectPlanet
+
     p0_to_p1 = _p0_to_p1_map()
     objectives = list(project.objectives.all())
 
@@ -52,7 +55,9 @@ def _build_project_routing(project):
             if inp in SCHEMATICS and SCHEMATICS[inp]["tier"] == 1:
                 p1_for_factory.add(inp)
 
-    all_pps = list(project.assigned_planets.select_related("planet__owner__character").all())
+    all_pps = list(
+        project.assigned_planets.select_related("planet__owner__character").all()
+    )
 
     def _char_info(pp):
         if pp.planet and pp.planet.owner:
@@ -60,13 +65,21 @@ def _build_project_routing(project):
                 "char_id": pp.planet.owner.character.character_id,
                 "char_name": pp.planet.owner.character.character_name,
             }
-        return {"char_id": pp.planned_char_id or 0, "char_name": pp.planned_char_name or "?"}
+        return {
+            "char_id": pp.planned_char_id or 0,
+            "char_name": pp.planned_char_name or "?",
+        }
 
     def _planet_name(pp):
-        return pp.planet.planet_name if pp.planet else (pp.planned_system_name or "New Planet")
+        return (
+            pp.planet.planet_name
+            if pp.planet
+            else (pp.planned_system_name or "New Planet")
+        )
 
     factory_pps = [
-        pp for pp in all_pps
+        pp
+        for pp in all_pps
         if pp.role in (PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4)
     ]
 
@@ -85,13 +98,15 @@ def _build_project_routing(project):
         dests = []
         for fp in factory_pps:
             fc = _char_info(fp)
-            dests.append({
-                "char_id": fc["char_id"],
-                "char_name": fc["char_name"],
-                "planet_name": _planet_name(fp),
-                "pp_pk": fp.pk,
-                "is_cross_char": fc["char_id"] != src["char_id"],
-            })
+            dests.append(
+                {
+                    "char_id": fc["char_id"],
+                    "char_name": fc["char_name"],
+                    "planet_name": _planet_name(fp),
+                    "pp_pk": fp.pk,
+                    "is_cross_char": fc["char_id"] != src["char_id"],
+                }
+            )
         miner_routing[pp.pk] = {"p1": p1, "weekly_qty": weekly_qty, "dests": dests}
 
     factory_inputs = {}
@@ -110,20 +125,24 @@ def _build_project_routing(project):
                 if mp.role != PiProjectPlanet.ROLE_MINER or mp.assigned_p0 != p0:
                     continue
                 mc = _char_info(mp)
-                sources.append({
-                    "char_id": mc["char_id"],
-                    "char_name": mc["char_name"],
-                    "planet_name": _planet_name(mp),
-                    "pp_pk": mp.pk,
-                    "is_cross_char": mc["char_id"] != fp_char["char_id"],
-                    "weekly_qty": weekly_per_miner,
-                })
+                sources.append(
+                    {
+                        "char_id": mc["char_id"],
+                        "char_name": mc["char_name"],
+                        "planet_name": _planet_name(mp),
+                        "pp_pk": mp.pk,
+                        "is_cross_char": mc["char_id"] != fp_char["char_id"],
+                        "weekly_qty": weekly_per_miner,
+                    }
+                )
             if sources:
-                receives.append({
-                    "p1": p1,
-                    "weekly_qty": sum(s["weekly_qty"] for s in sources),
-                    "sources": sources,
-                })
+                receives.append(
+                    {
+                        "p1": p1,
+                        "weekly_qty": sum(s["weekly_qty"] for s in sources),
+                        "sources": sources,
+                    }
+                )
         factory_inputs[fp.pk] = {"receives": receives}
 
     return miner_routing, factory_inputs
@@ -133,6 +152,7 @@ def _build_project_routing(project):
 @permission_required("aa_pi_tracker.view_pi")
 def optimizer_page(request):
     from ..optimizer import get_planet_pools
+
     owners = get_owners(request.user)
     pools = get_planet_pools(request.user)
     has_corp_perm = request.user.has_perm("aa_pi_tracker.manage_corp_pi")
@@ -160,6 +180,7 @@ def optimizer_page(request):
 @require_POST
 def optimizer_analyze_json(request):
     from ..optimizer import analyze_max_isk, analyze_target
+
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -176,11 +197,15 @@ def optimizer_analyze_json(request):
         tax_rate = 0.0
 
     qty_per_hour = max(1, min(50, int(data.get("qty_per_hour", 1))))
-    corp_mode = bool(data.get("corp_mode")) and request.user.has_perm("aa_pi_tracker.manage_corp_pi")
+    corp_mode = bool(data.get("corp_mode")) and request.user.has_perm(
+        "aa_pi_tracker.manage_corp_pi"
+    )
     if corp_mode:
         owners = get_corp_owners(request.user)
         if not owners:
-            return JsonResponse({"ok": False, "error": "Corp mode: no corp members are sharing PI yet."})
+            return JsonResponse(
+                {"ok": False, "error": "Corp mode: no corp members are sharing PI yet."}
+            )
     else:
         owners = None
 
@@ -193,9 +218,20 @@ def optimizer_analyze_json(request):
             p4_char_id = int(data["p4_char_id"]) if data.get("p4_char_id") else None
         except (ValueError, TypeError):
             p4_char_id = None
-        result = analyze_target(request.user, target, system_id, max_jumps, tax_rate, qty_per_hour, owners=owners, p4_char_id=p4_char_id)
+        result = analyze_target(
+            request.user,
+            target,
+            system_id,
+            max_jumps,
+            tax_rate,
+            qty_per_hour,
+            owners=owners,
+            p4_char_id=p4_char_id,
+        )
     elif mode == "max_isk":
-        result = analyze_max_isk(request.user, system_id, max_jumps, tax_rate, qty_per_hour, owners=owners)
+        result = analyze_max_isk(
+            request.user, system_id, max_jumps, tax_rate, qty_per_hour, owners=owners
+        )
     else:
         return JsonResponse({"error": "Invalid mode"}, status=400)
 
@@ -207,6 +243,7 @@ def optimizer_analyze_json(request):
 @require_POST
 def optimizer_create_project(request):
     from ..optimizer import create_project as _build_project
+
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -236,6 +273,7 @@ def optimizer_create_project(request):
 @require_POST
 def optimizer_create_corp_project(request):
     from ..optimizer import create_project as _build_project
+
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -252,7 +290,9 @@ def optimizer_create_corp_project(request):
     corp_owners = get_corp_owners(request.user)
     allowed_owner_ids = {o.pk for o in corp_owners} if corp_owners else None
 
-    project = _build_project(request.user, name, assignments, allowed_owner_ids=allowed_owner_ids)
+    project = _build_project(
+        request.user, name, assignments, allowed_owner_ids=allowed_owner_ids
+    )
     project.is_corp_project = True
     project.corp_id = corp_id
     project.corp_name = corp_name
@@ -260,7 +300,9 @@ def optimizer_create_corp_project(request):
 
     char_ids = set()
     planet_pks = [a["pk"] for a in assignments if isinstance(a, dict) and a.get("pk")]
-    for planet in PiPlanet.objects.filter(pk__in=planet_pks).select_related("owner__character"):
+    for planet in PiPlanet.objects.filter(pk__in=planet_pks).select_related(
+        "owner__character"
+    ):
         char_ids.add(planet.owner.character.character_id)
     for a in assignments:
         if isinstance(a, dict) and a.get("new_slot") and a.get("char_id"):

@@ -1,3 +1,4 @@
+# Django
 from django.contrib import admin
 
 from .models import (
@@ -42,7 +43,13 @@ class PiStorageItemInline(admin.TabularInline):
 
 @admin.register(PiPlanet)
 class PiPlanetAdmin(admin.ModelAdmin):
-    list_display = ("planet_name", "owner", "planet_type", "upgrade_level", "last_update")
+    list_display = (
+        "planet_name",
+        "owner",
+        "planet_type",
+        "upgrade_level",
+        "last_update",
+    )
     list_filter = ("planet_type",)
     list_select_related = ("owner__character",)
     search_fields = ("planet_name", "owner__character__character_name")

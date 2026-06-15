@@ -1,10 +1,14 @@
 """
 Tests for aa_pi_tracker.schematics — pure-Python functions, no DB needed.
 """
+
+# Standard Library
 import math
 
+# Django
 from django.test import SimpleTestCase
 
+# AA PI Tracker
 from aa_pi_tracker.pi_data import (
     PLANET_TYPE_P0,
     PLANET_TYPE_SLUG_TO_P0,
@@ -92,10 +96,12 @@ class TestExpandProduction(SimpleTestCase):
         self.assertIn("Noble Metals", extractions)
 
     def test_multiple_objectives(self):
-        factories, extractions = expand_production([
-            ("Bacteria", 40.0),
-            ("Water", 40.0),
-        ])
+        factories, extractions = expand_production(
+            [
+                ("Bacteria", 40.0),
+                ("Water", 40.0),
+            ]
+        )
         self.assertAlmostEqual(factories["Bacteria"], 1.0)
         self.assertAlmostEqual(factories["Water"], 1.0)
         self.assertIn("Microorganisms", extractions)
@@ -111,12 +117,26 @@ class TestExpandProduction(SimpleTestCase):
         # Should cascade all the way down to P0
         self.assertTrue(len(extractions) > 0)
         for resource in extractions:
-            self.assertIn(resource, {
-                "Base Metals", "Noble Metals", "Heavy Metals", "Non-CS Crystals",
-                "Felsic Magma", "Aqueous Liquids", "Ionic Solutions", "Noble Gas",
-                "Reactive Gas", "Suspended Plasma", "Microorganisms", "Planktic Colonies",
-                "Complex Organisms", "Carbon Compounds", "Autotrophs",
-            })
+            self.assertIn(
+                resource,
+                {
+                    "Base Metals",
+                    "Noble Metals",
+                    "Heavy Metals",
+                    "Non-CS Crystals",
+                    "Felsic Magma",
+                    "Aqueous Liquids",
+                    "Ionic Solutions",
+                    "Noble Gas",
+                    "Reactive Gas",
+                    "Suspended Plasma",
+                    "Microorganisms",
+                    "Planktic Colonies",
+                    "Complex Organisms",
+                    "Carbon Compounds",
+                    "Autotrophs",
+                },
+            )
 
 
 class TestSuggestFactorySetup(SimpleTestCase):
@@ -142,8 +162,8 @@ class TestSuggestFactorySetup(SimpleTestCase):
         # Biofuels + Precious Metals → Biocells (P2)
         # Each P1: 6 factories × 6000 P0/h = need 36000 of each
         extraction_rates = {
-            "Carbon Compounds": 36000,   # → 6 Biofuels factories = 240 Biofuels/h
-            "Noble Metals": 36000,       # → 6 Precious Metals factories = 240 PMs/h
+            "Carbon Compounds": 36000,  # → 6 Biofuels factories = 240 Biofuels/h
+            "Noble Metals": 36000,  # → 6 Precious Metals factories = 240 PMs/h
         }
         result = suggest_factory_setup(extraction_rates)
         p2_names = [c["product"] for c in result["p2_chains"]]
@@ -205,14 +225,18 @@ class TestProductionPlan(SimpleTestCase):
 
     def test_total_planets_equals_miners_plus_factories(self):
         plan = production_plan("Robotics")
-        self.assertEqual(plan["total_planets"], plan["total_miners"] + plan["factory_planets"])
+        self.assertEqual(
+            plan["total_planets"], plan["total_miners"] + plan["factory_planets"]
+        )
 
     def test_total_aifs_excludes_htpp(self):
         # For P4 Integrity Response Drones: 42 pure AIFs + 1 HTPP = 43 total buildings
         # total_aifs should be 42 (HTPP not counted)
         plan = production_plan("Integrity Response Drones")
         self.assertEqual(plan["total_aifs"], sum(plan["aifs"].values()))
-        self.assertNotEqual(plan["total_aifs"], sum(plan["aifs"].values()) + sum(plan["htpps"].values()))
+        self.assertNotEqual(
+            plan["total_aifs"], sum(plan["aifs"].values()) + sum(plan["htpps"].values())
+        )
 
 
 class TestPlanetTypeP0(SimpleTestCase):
@@ -231,5 +255,14 @@ class TestPlanetTypeP0(SimpleTestCase):
         self.assertEqual(PLANET_TYPE_SLUG_TO_P0["barren"], PLANET_TYPE_P0[2016])
 
     def test_all_eight_planet_types_covered(self):
-        expected_slugs = {"temperate", "ice", "gas", "oceanic", "lava", "barren", "storm", "plasma"}
+        expected_slugs = {
+            "temperate",
+            "ice",
+            "gas",
+            "oceanic",
+            "lava",
+            "barren",
+            "storm",
+            "plasma",
+        }
         self.assertEqual(set(PLANET_TYPE_SLUG_TO_P0.keys()), expected_slugs)

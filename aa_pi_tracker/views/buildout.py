@@ -1,5 +1,7 @@
+# Standard Library
 import math
 
+# Django
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render
 
@@ -29,8 +31,18 @@ def _slice_aifs(remaining: list, max_count: int) -> tuple:
 def _planet_display(pp):
     """Return (planet_name, planet_type, system, is_colonized) for a PiProjectPlanet."""
     if pp.planet:
-        return pp.planet.planet_name, pp.planet.planet_type, pp.planet.solar_system_name or "", True
-    return pp.planned_system_name or "New Planet", pp.planned_planet_type or "unknown", pp.planned_system_name or "", False
+        return (
+            pp.planet.planet_name,
+            pp.planet.planet_type,
+            pp.planet.solar_system_name or "",
+            True,
+        )
+    return (
+        pp.planned_system_name or "New Planet",
+        pp.planned_planet_type or "unknown",
+        pp.planned_system_name or "",
+        False,
+    )
 
 
 def _build_buildout_data(project, user_filter=None, user_char_ids=None):
@@ -59,41 +71,64 @@ def _build_buildout_data(project, user_filter=None, user_char_ids=None):
                 p1_inputs.add(inp)
 
     aif_breakdown_full = sorted(
-        [{"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": c}
-         for n, c in combined_aifs.items() if n in SCHEMATICS],
+        [
+            {"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": c}
+            for n, c in combined_aifs.items()
+            if n in SCHEMATICS
+        ],
         key=lambda x: (-x["tier"], x["schematic"]),
     )
     htpp_breakdown_full = sorted(
-        [{"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": c}
-         for n, c in combined_htpps.items() if n in SCHEMATICS],
+        [
+            {"schematic": n, "tier": SCHEMATICS[n]["tier"], "count": c}
+            for n, c in combined_htpps.items()
+            if n in SCHEMATICS
+        ],
         key=lambda x: x["schematic"],
     )
     sorted_p1_inputs = sorted(p1_inputs)
 
     # Load all assigned planets in one query
-    all_pps = list(project.assigned_planets.select_related(
-        "planet__owner__user", "planet__owner__character"
-    ).order_by("planned_char_name", "planet__owner__character__character_name", "role"))
+    all_pps = list(
+        project.assigned_planets.select_related(
+            "planet__owner__user", "planet__owner__character"
+        ).order_by(
+            "planned_char_name", "planet__owner__character__character_name", "role"
+        )
+    )
 
     # Pre-compute AIF allocation per factory planet.
     # Process order: "factory" planets first (takes up to MAX_AIFS each),
     # then "factory_p4" (gets all remaining AIFs + HTpps).
     factory_pps = sorted(
-        [pp for pp in all_pps if pp.role in (PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4)],
-        key=lambda pp: (0 if pp.role == PiProjectPlanet.ROLE_FACTORY else 1, pp.pk or 0),
+        [
+            pp
+            for pp in all_pps
+            if pp.role
+            in (PiProjectPlanet.ROLE_FACTORY, PiProjectPlanet.ROLE_FACTORY_P4)
+        ],
+        key=lambda pp: (
+            0 if pp.role == PiProjectPlanet.ROLE_FACTORY else 1,
+            pp.pk or 0,
+        ),
     )
     remaining_aifs = [e.copy() for e in aif_breakdown_full]
     aif_alloc: dict = {}  # pp.pk → (my_aifs, my_htpps)
 
     for i, pp in enumerate(factory_pps):
-        is_last = (i == len(factory_pps) - 1)
-        is_p4_role = (pp.role == PiProjectPlanet.ROLE_FACTORY_P4)
+        is_last = i == len(factory_pps) - 1
+        is_p4_role = pp.role == PiProjectPlanet.ROLE_FACTORY_P4
 
         if is_last or is_p4_role:
-            aif_alloc[pp.pk] = (remaining_aifs[:], htpp_breakdown_full if is_p4_role else [])
+            aif_alloc[pp.pk] = (
+                remaining_aifs[:],
+                htpp_breakdown_full if is_p4_role else [],
+            )
             remaining_aifs = []
         else:
-            my_aifs, remaining_aifs = _slice_aifs(remaining_aifs, MAX_AIFS_PER_FACTORY_PLANET)
+            my_aifs, remaining_aifs = _slice_aifs(
+                remaining_aifs, MAX_AIFS_PER_FACTORY_PLANET
+            )
             aif_alloc[pp.pk] = (my_aifs, [])
 
     # Build display structure grouped by character
@@ -108,7 +143,10 @@ def _build_buildout_data(project, user_filter=None, user_char_ids=None):
             if user_filter:
                 if not pp.planned_char_id:
                     continue
-                if user_char_ids is not None and pp.planned_char_id not in user_char_ids:
+                if (
+                    user_char_ids is not None
+                    and pp.planned_char_id not in user_char_ids
+                ):
                     continue
             char_id = pp.planned_char_id or 0
             char_name = pp.planned_char_name or "Unassigned"
@@ -140,7 +178,14 @@ def _buildout_miner_entry(pp, p0_to_p1):
         "is_colonized": is_colonized,
         "extracts": p0,
         "produces": p0_to_p1.get(p0, ""),
-        "layout": {"ccu": 4, "extractors": 1, "bifs": 8, "aifs": None, "htpps": None, "launchpads": 1},
+        "layout": {
+            "ccu": 4,
+            "extractors": 1,
+            "bifs": 8,
+            "aifs": None,
+            "htpps": None,
+            "launchpads": 1,
+        },
         "aif_breakdown": [],
         "htpp_breakdown": [],
         "p1_inputs": [],
@@ -185,7 +230,9 @@ def buildout_page(request, pk):
         else request.user
     )
     user_char_ids = {o.character.character_id for o in owners} if user_filter else None
-    chars_data = _build_buildout_data(project, user_filter=user_filter, user_char_ids=user_char_ids)
+    chars_data = _build_buildout_data(
+        project, user_filter=user_filter, user_char_ids=user_char_ids
+    )
     ctx = {
         "active_page": "corp_projects" if project.is_corp_project else "projects",
         "project": project,

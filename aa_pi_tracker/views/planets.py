@@ -1,5 +1,7 @@
+# Standard Library
 import json
 
+# Django
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -31,23 +33,27 @@ def system_search(request):
     q = request.GET.get("q", "").strip()
     if len(q) < 2:
         return JsonResponse({"results": []})
+    # Third Party
     from eve_sde.models import SolarSystem
+
     systems = (
         SolarSystem.objects.filter(name__icontains=q, id__lt=31000000)
         .select_related("constellation__region")
         .values("id", "name", "security_status", "constellation__region__name")[:20]
     )
-    return JsonResponse({
-        "results": [
-            {
-                "id": s["id"],
-                "name": s["name"],
-                "region": s["constellation__region__name"] or "",
-                "sec": round(max(s["security_status"] or 0, -1.0), 1),
-            }
-            for s in systems
-        ]
-    })
+    return JsonResponse(
+        {
+            "results": [
+                {
+                    "id": s["id"],
+                    "name": s["name"],
+                    "region": s["constellation__region__name"] or "",
+                    "sec": round(max(s["security_status"] or 0, -1.0), 1),
+                }
+                for s in systems
+            ]
+        }
+    )
 
 
 @login_required
@@ -65,7 +71,9 @@ def planet_optimizer_json(request, planet_pk):
     actual_factories: dict[str, int] = {}
     for fac in planet.factories.all():
         if fac.schematic_name:
-            actual_factories[fac.schematic_name] = actual_factories.get(fac.schematic_name, 0) + 1
+            actual_factories[fac.schematic_name] = (
+                actual_factories.get(fac.schematic_name, 0) + 1
+            )
 
     suggestions = suggest_factory_setup(extraction_rates)
     prices = load_prices()
@@ -73,15 +81,19 @@ def planet_optimizer_json(request, planet_pk):
     for chain in suggestions["p1_chains"] + suggestions["p2_chains"]:
         chain["actual_factories"] = actual_factories.get(chain["product"], 0)
         chain["factory_gap"] = chain["actual_factories"] - chain["optimal_factories"]
-        chain["isk_per_hour_optimal"] = round(chain["output_per_hour"] * prices.get(chain["product"], 0), 0)
+        chain["isk_per_hour_optimal"] = round(
+            chain["output_per_hour"] * prices.get(chain["product"], 0), 0
+        )
 
-    return JsonResponse({
-        "ok": True,
-        "planet_name": planet.planet_name,
-        "planet_type": planet.get_planet_type_display(),
-        "extraction_rates": {k: round(v, 0) for k, v in extraction_rates.items()},
-        **suggestions,
-    })
+    return JsonResponse(
+        {
+            "ok": True,
+            "planet_name": planet.planet_name,
+            "planet_type": planet.get_planet_type_display(),
+            "extraction_rates": {k: round(v, 0) for k, v in extraction_rates.items()},
+            **suggestions,
+        }
+    )
 
 
 @login_required
