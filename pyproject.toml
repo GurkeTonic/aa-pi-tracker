@@ -38,6 +38,15 @@ dependencies = [
     "django-eveonline-sde",
 ]
 
+[project.optional-dependencies]
+tests = [
+    "coverage",
+]
+tests-allianceauth-latest = [
+    "allianceauth>=5",
+    "coverage",
+]
+
 [project.urls]
 Homepage = "https://github.com/GurkeTonic/aa-pi-tracker"
 Changelog = "https://github.com/GurkeTonic/aa-pi-tracker/blob/main/CHANGELOG.md"
