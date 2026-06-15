@@ -3,3 +3,5 @@ exclude = .git, *migrations*, .tox, dist, htmlcov
 select = C,E,F,W,B,B950
 ignore = E203, E231, E501, W503, W291, W293
 max-line-length = 120
+per-file-ignores =
+    testauth/settings/*.py: E501, F403, F405

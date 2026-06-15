@@ -1,14 +1,17 @@
 """
 Extended model tests covering properties and relationships not tested in test_models.py.
 """
+
+# Django
 from django.test import TestCase
 
+# Alliance Auth
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
+# AA PI Tracker
 from aa_pi_tracker.models import (
     PiExtractorPin,
-    PiFactoryPin,
     PiMarketPrice,
     PiOwner,
     PiPlanet,
@@ -130,7 +133,9 @@ class TestPiProjectObjectiveUniqueConstraint(TestCase):
         )
 
     def test_duplicate_schematic_raises(self):
+        # Django
         from django.db import IntegrityError
+
         with self.assertRaises(IntegrityError):
             PiProjectObjective.objects.create(
                 project=self.project, schematic_name="Water", target_qty_per_hour=2
@@ -142,7 +147,10 @@ class TestPiStorageItemStr(TestCase):
     def setUpTestData(cls):
         cls.user, cls.owner = _make_owner("storage_test", "Storage Char", 10000006)
         cls.planet = PiPlanet.objects.create(
-            owner=cls.owner, planet_id=40000200, planet_name="Storage IV", planet_type="barren"
+            owner=cls.owner,
+            planet_id=40000200,
+            planet_name="Storage IV",
+            planet_type="barren",
         )
         cls.item = PiStorageItem.objects.create(
             planet=cls.planet, type_id=2267, type_name="Base Metals", amount=5000
@@ -159,14 +167,19 @@ class TestPiStorageItemUnique(TestCase):
     def setUpTestData(cls):
         cls.user, cls.owner = _make_owner("stor_uniq", "Stor Char", 10000007)
         cls.planet = PiPlanet.objects.create(
-            owner=cls.owner, planet_id=40000201, planet_name="Store V", planet_type="ice"
+            owner=cls.owner,
+            planet_id=40000201,
+            planet_name="Store V",
+            planet_type="ice",
         )
         PiStorageItem.objects.create(
             planet=cls.planet, type_id=2267, type_name="Base Metals", amount=100
         )
 
     def test_duplicate_type_id_raises(self):
+        # Django
         from django.db import IntegrityError
+
         with self.assertRaises(IntegrityError):
             PiStorageItem.objects.create(
                 planet=self.planet, type_id=2267, type_name="Base Metals", amount=200
@@ -175,7 +188,9 @@ class TestPiStorageItemUnique(TestCase):
 
 class TestPiMarketPriceStr(TestCase):
     def test_str_shows_isk_formatted(self):
-        price = PiMarketPrice(type_id=2267, type_name="Base Metals", tier=0, jita_buy=1234567.0)
+        price = PiMarketPrice(
+            type_id=2267, type_name="Base Metals", tier=0, jita_buy=1234567.0
+        )
         s = str(price)
         self.assertIn("Base Metals", s)
         self.assertIn("ISK", s)
@@ -183,6 +198,7 @@ class TestPiMarketPriceStr(TestCase):
 
 class TestPiProjectPlanetDuplicateAllowed(TestCase):
     """Migration 0010 removed unique_together — same planet can appear multiple times in a project."""
+
     @classmethod
     def setUpTestData(cls):
         cls.user, cls.owner = _make_owner("pp_uniq", "PP Char", 10000008)
@@ -195,7 +211,10 @@ class TestPiProjectPlanetDuplicateAllowed(TestCase):
     def test_duplicate_project_planet_allowed(self):
         PiProjectPlanet.objects.create(project=self.project, planet=self.planet)
         self.assertEqual(
-            PiProjectPlanet.objects.filter(project=self.project, planet=self.planet).count(), 2
+            PiProjectPlanet.objects.filter(
+                project=self.project, planet=self.planet
+            ).count(),
+            2,
         )
 
 

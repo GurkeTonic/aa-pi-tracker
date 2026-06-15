@@ -1,13 +1,23 @@
+# Standard Library
 from collections import defaultdict
 from datetime import timedelta
 
+# Django
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404
 from django.utils import timezone
 
+# Alliance Auth
 from allianceauth.services.hooks import get_extension_logger
 
-from ..models import PiExtractorPin, PiFactoryPin, PiMarketPrice, PiOwner, PiPlanet, PiProject, PiStorageItem
+from ..models import (
+    PiExtractorPin,
+    PiMarketPrice,
+    PiOwner,
+    PiPlanet,
+    PiProject,
+    PiStorageItem,
+)
 from ..pi_data import P0_TO_P1, p0_rate_to_p1_rate
 
 logger = get_extension_logger(__name__)
@@ -95,8 +105,8 @@ def get_project_or_404(request, pk):
     """Return project owned by user OR corp project they participate in."""
     project = (
         PiProject.objects.filter(
-            Q(pk=pk, user=request.user) |
-            Q(pk=pk, is_corp_project=True, participants__user=request.user)
+            Q(pk=pk, user=request.user)
+            | Q(pk=pk, is_corp_project=True, participants__user=request.user)
         )
         .distinct()
         .first()
@@ -107,7 +117,9 @@ def get_project_or_404(request, pk):
 
 
 def get_corp_owners(user):
+    # Django
     from django.db.models import Prefetch
+
     corp_id, _ = manager_corp_id(user)
     if not corp_id:
         return []
@@ -118,7 +130,12 @@ def get_corp_owners(user):
         )
         .select_related("character", "user")
         .prefetch_related(
-            Prefetch("planets", queryset=PiPlanet.objects.prefetch_related("extractors").order_by("planet_name"))
+            Prefetch(
+                "planets",
+                queryset=PiPlanet.objects.prefetch_related("extractors").order_by(
+                    "planet_name"
+                ),
+            )
         )
     )
 
@@ -133,8 +150,14 @@ def manager_corp_id(user):
         pass
     except Exception:
         logger.exception("Unexpected error reading main character for user %s", user)
+    # Alliance Auth
     from allianceauth.eveonline.models import EveCharacter
-    char = EveCharacter.objects.filter(character_ownership__user=user).order_by("character_id").first()
+
+    char = (
+        EveCharacter.objects.filter(character_ownership__user=user)
+        .order_by("character_id")
+        .first()
+    )
     if char:
         return char.corporation_id, char.corporation_name
     return None, ""
@@ -156,32 +179,36 @@ def compute_extractors(owners, prices: dict, now) -> list:
                 p1_name = P0_TO_P1.get(ext.product_name)
                 p1_rate = p0_rate_to_p1_rate(qty_h)
                 isk_h = p1_rate * prices.get(p1_name, 0.0) if p1_name else 0.0
-                extractors.append({
-                    "character": owner.character.character_name,
-                    "char_id": owner.character.character_id,
-                    "region": planet.region_name or "—",
-                    "system": planet.solar_system_name or "—",
-                    "sec_class": sec_class(planet.security_status),
-                    "sec_display": sec_display(planet.security_status),
-                    "planet_name": planet.planet_name,
-                    "planet_type": planet.get_planet_type_display(),
-                    "upgrade_level": planet.upgrade_level,
-                    "product": ext.product_name,
-                    "head_count": ext.head_count,
-                    "progress": progress,
-                    "urgency": urgency,
-                    "time_remaining": time_remaining,
-                    "expiry_time": ext.expiry_time,
-                    "cycle_display": fmt_cycle(ext.cycle_time),
-                    "qty_per_cycle": ext.qty_per_cycle,
-                    "qty_per_hour": round(qty_h, 0),
-                    "isk_per_hour": isk_h,
-                })
+                extractors.append(
+                    {
+                        "character": owner.character.character_name,
+                        "char_id": owner.character.character_id,
+                        "region": planet.region_name or "—",
+                        "system": planet.solar_system_name or "—",
+                        "sec_class": sec_class(planet.security_status),
+                        "sec_display": sec_display(planet.security_status),
+                        "planet_name": planet.planet_name,
+                        "planet_type": planet.get_planet_type_display(),
+                        "upgrade_level": planet.upgrade_level,
+                        "product": ext.product_name,
+                        "head_count": ext.head_count,
+                        "progress": progress,
+                        "urgency": urgency,
+                        "time_remaining": time_remaining,
+                        "expiry_time": ext.expiry_time,
+                        "cycle_display": fmt_cycle(ext.cycle_time),
+                        "qty_per_cycle": ext.qty_per_cycle,
+                        "qty_per_hour": round(qty_h, 0),
+                        "isk_per_hour": isk_h,
+                    }
+                )
     _urgency_order = {"expired": 0, "critical": 1, "warning": 2, "ok": 3}
-    extractors.sort(key=lambda e: (
-        _urgency_order.get(e["urgency"], 9),
-        e["expiry_time"] or now.replace(year=9999),
-    ))
+    extractors.sort(
+        key=lambda e: (
+            _urgency_order.get(e["urgency"], 9),
+            e["expiry_time"] or now.replace(year=9999),
+        )
+    )
     return extractors
 
 
@@ -196,32 +223,41 @@ def compute_planets(owners, prices: dict) -> list:
                     content_extractors[ext.product_name] += 1
                     p1_name = P0_TO_P1.get(ext.product_name)
                     p1_rate = p0_rate_to_p1_rate(ext.avg_per_hour)
-                    planet_isk_h += p1_rate * prices.get(p1_name, 0.0) if p1_name else 0.0
+                    planet_isk_h += (
+                        p1_rate * prices.get(p1_name, 0.0) if p1_name else 0.0
+                    )
             content_factories = defaultdict(int)
             for fac in planet.factories.all():
                 if fac.schematic_name:
                     content_factories[fac.schematic_name] += 1
             storage = [
-                {"name": s.type_name, "amount": s.amount,
-                 "isk_value": s.amount * prices.get(s.type_name, 0)}
+                {
+                    "name": s.type_name,
+                    "amount": s.amount,
+                    "isk_value": s.amount * prices.get(s.type_name, 0),
+                }
                 for s in planet.storage_items.all()
             ]
             storage_isk_total = sum(s["isk_value"] for s in storage)
-            all_planets.append({
-                "owner": owner,
-                "planet": planet,
-                "region": planet.region_name or "—",
-                "system": planet.solar_system_name or "—",
-                "sec_class": sec_class(planet.security_status),
-                "sec_display": sec_display(planet.security_status),
-                "extractor_count": len(planet.extractors.all()),
-                "factory_count": len(planet.factories.all()),
-                "assigned_projects": [pp.project.name for pp in planet.project_links.all()],
-                "content_extractors": dict(content_extractors),
-                "content_factories": dict(content_factories),
-                "isk_per_hour": planet_isk_h,
-                "storage": sorted(storage, key=lambda x: -x["amount"]),
-                "storage_isk_total": storage_isk_total,
-            })
+            all_planets.append(
+                {
+                    "owner": owner,
+                    "planet": planet,
+                    "region": planet.region_name or "—",
+                    "system": planet.solar_system_name or "—",
+                    "sec_class": sec_class(planet.security_status),
+                    "sec_display": sec_display(planet.security_status),
+                    "extractor_count": len(planet.extractors.all()),
+                    "factory_count": len(planet.factories.all()),
+                    "assigned_projects": [
+                        pp.project.name for pp in planet.project_links.all()
+                    ],
+                    "content_extractors": dict(content_extractors),
+                    "content_factories": dict(content_factories),
+                    "isk_per_hour": planet_isk_h,
+                    "storage": sorted(storage, key=lambda x: -x["amount"]),
+                    "storage_isk_total": storage_isk_total,
+                }
+            )
     all_planets.sort(key=lambda p: (p["region"], p["system"], p["planet"].planet_name))
     return all_planets

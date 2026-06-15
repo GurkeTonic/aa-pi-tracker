@@ -1,7 +1,9 @@
+# Standard Library
 import time
 from collections import deque
 from functools import lru_cache
 
+# Django
 from django.core.cache import cache
 
 # SDE item_type_id → planet type slug for all standard PI planet types
@@ -30,7 +32,9 @@ def _build_jump_graph():
         return _LOCAL_GRAPH["graph"]
     graph = cache.get("pi_tracker_jump_graph")
     if graph is None:
+        # Third Party
         from eve_sde.models import Stargate
+
         graph = {}
         for gate in Stargate.objects.values("solar_system_id", "destination_id"):
             graph.setdefault(gate["solar_system_id"], []).append(gate["destination_id"])
@@ -67,18 +71,18 @@ def jump_distances(home_system_id, max_jumps):
 def sde_types_in_range(jd):
     """
     Given {system_id: jumps}, return:
-      available_slugs: set of planet type slugs that exist within range
-      examples: {slug: (system_name, jumps, radius_km, planet_name)} —
-                closest system per type; ties broken by smallest planet radius
+        available_slugs: set of planet type slugs that exist within range
+        examples: {slug: (system_name, jumps, radius_km, planet_name)} —
+        closest system per type; ties broken by smallest planet radius
     Uses SDE data, not user-registered planets.
     """
+    # Third Party
     from eve_sde.models import Planet as SDEPlanet
+
     system_ids = list(jd.keys())
-    rows = (
-        SDEPlanet.objects
-        .filter(solar_system_id__in=system_ids, item_type_id__in=SDE_TYPE_ID_TO_SLUG)
-        .values("solar_system_id", "solar_system__name", "item_type_id", "radius", "name")
-    )
+    rows = SDEPlanet.objects.filter(
+        solar_system_id__in=system_ids, item_type_id__in=SDE_TYPE_ID_TO_SLUG
+    ).values("solar_system_id", "solar_system__name", "item_type_id", "radius", "name")
     available = set()
     examples = {}
     for row in rows:
@@ -89,6 +93,10 @@ def sde_types_in_range(jd):
         jumps = jd.get(row["solar_system_id"], 0)
         radius_km = round(row["radius"] / 1000) if row.get("radius") else 999_000
         existing = examples.get(slug)
-        if existing is None or jumps < existing[1] or (jumps == existing[1] and radius_km < existing[2]):
+        if (
+            existing is None
+            or jumps < existing[1]
+            or (jumps == existing[1] and radius_km < existing[2])
+        ):
             examples[slug] = (row["solar_system__name"], jumps, radius_km, row["name"])
     return available, examples

@@ -18,8 +18,6 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: monthly
-  skip:
-    - eslint  # Fails due to missing node environment in CI
   submodules: false
 
 # Globally exclude files
@@ -120,18 +118,6 @@ repos:
         name: End of file fixer
         description: Ensure that files end with a newline.
 
-  - repo: https://github.com/eslint/eslint
-    rev: 0bc75e8d85925c93a3cbf4891c2baad079c43c34  # frozen: v10.4.1
-    hooks:
-      - id: eslint
-        name: ESLint
-        description: Check for problems in JavaScript files.
-        language: node
-        additional_dependencies:
-          # eslint itself needs to be here when using additional_dependencies.
-          - eslint@10.4.1 # https://github.com/eslint/eslint/releases/latest
-          - globals@17.6.0 # https://github.com/sindresorhus/globals/releases/latest
-
   - repo: https://github.com/thibaudcolas/pre-commit-stylelint
     rev: 4ed192c3fb468ed5d36e93b594fbfe4490aa8c31  # frozen: v17.12.0
     hooks:
@@ -179,6 +165,7 @@ repos:
       - id: editorconfig-checker
         name: EditorConfig Checker
         description: Check for compliance with the definitions in the EditorConfig file.
+        exclude: \.(html)$
 
   - repo: https://github.com/adamchainz/django-upgrade
     rev: 4864562a5d05a7ff3bce99bc31f892eeb396fc00  # frozen: 1.30.0

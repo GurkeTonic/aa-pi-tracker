@@ -1,3 +1,4 @@
+# Django
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -6,14 +7,15 @@ from django.views.decorators.http import require_POST
 from ..models import PiOwner, PiProject, PiProjectObjective
 from ..pi_data import SCHEMATIC_CHOICES, SCHEMATICS
 from .helpers import get_owners, manager_corp_id, nav_data
-from .helpers import get_corp_owners
 
 
 @login_required
 @permission_required("aa_pi_tracker.view_pi")
 @require_POST
 def toggle_share_character(request):
-    owner = get_object_or_404(PiOwner, pk=request.POST.get("owner_pk"), user=request.user)
+    owner = get_object_or_404(
+        PiOwner, pk=request.POST.get("owner_pk"), user=request.user
+    )
     owner.shared_with_corp = not owner.shared_with_corp
     owner.save(update_fields=["shared_with_corp"])
     return JsonResponse({"ok": True, "shared": owner.shared_with_corp})
@@ -92,7 +94,9 @@ def create_corp_project(request):
 @permission_required("aa_pi_tracker.manage_corp_pi")
 @require_POST
 def delete_corp_project(request, pk):
-    project = get_object_or_404(PiProject, pk=pk, user=request.user, is_corp_project=True)
+    project = get_object_or_404(
+        PiProject, pk=pk, user=request.user, is_corp_project=True
+    )
     project.delete()
     return JsonResponse({"ok": True})
 
@@ -101,7 +105,9 @@ def delete_corp_project(request, pk):
 @permission_required("aa_pi_tracker.manage_corp_pi")
 @require_POST
 def corp_project_set_participants(request, pk):
-    project = get_object_or_404(PiProject, pk=pk, user=request.user, is_corp_project=True)
+    project = get_object_or_404(
+        PiProject, pk=pk, user=request.user, is_corp_project=True
+    )
     corp_id, _ = manager_corp_id(request.user)
     owner_pks = request.POST.getlist("owner_pks[]") or request.POST.getlist("owner_pks")
     allowed = (
@@ -122,7 +128,9 @@ def corp_project_set_participants(request, pk):
 @permission_required("aa_pi_tracker.manage_corp_pi")
 @require_POST
 def corp_project_add_objective(request, pk):
-    project = get_object_or_404(PiProject, pk=pk, user=request.user, is_corp_project=True)
+    project = get_object_or_404(
+        PiProject, pk=pk, user=request.user, is_corp_project=True
+    )
     schematic_name = request.POST.get("schematic_name", "")
     try:
         target = max(1, min(50, int(request.POST.get("target_qty_per_hour", 1))))
@@ -135,7 +143,9 @@ def corp_project_add_objective(request, pk):
         schematic_name=schematic_name,
         defaults={"target_qty_per_hour": target},
     )
-    return JsonResponse({"ok": True, "id": obj.pk, "schematic_name": schematic_name, "target": target})
+    return JsonResponse(
+        {"ok": True, "id": obj.pk, "schematic_name": schematic_name, "target": target}
+    )
 
 
 @login_required
@@ -143,8 +153,10 @@ def corp_project_add_objective(request, pk):
 @require_POST
 def corp_project_delete_objective(request, pk):
     obj = get_object_or_404(
-        PiProjectObjective, pk=pk,
-        project__user=request.user, project__is_corp_project=True,
+        PiProjectObjective,
+        pk=pk,
+        project__user=request.user,
+        project__is_corp_project=True,
     )
     obj.delete()
     return JsonResponse({"ok": True})

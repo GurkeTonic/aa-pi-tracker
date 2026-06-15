@@ -1,9 +1,11 @@
+# Standard Library
 import math
 from collections import defaultdict
 
+# Django
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
 from ..models import PiPlanet, PiProject, PiProjectObjective, PiProjectPlanet
@@ -12,7 +14,9 @@ from .helpers import get_owners, load_prices, nav_data
 
 
 def _build_project_data(project: PiProject, prices: dict) -> dict:
-    objectives = [(o.schematic_name, o.target_qty_per_hour) for o in project.objectives.all()]
+    objectives = [
+        (o.schematic_name, o.target_qty_per_hour) for o in project.objectives.all()
+    ]
 
     planet_assignments = []
     colonized_planets = []
@@ -22,26 +26,28 @@ def _build_project_data(project: PiProject, prices: dict) -> dict:
         planet = pp.planet
 
         if planet is None:
-            planet_assignments.append({
-                "pp_pk": pp.pk,
-                "planet_pk": None,
-                "is_planned": True,
-                "role": pp.role or "",
-                "display_p0": pp.assigned_p0 or None,
-                "planned_p0": pp.assigned_p0 or None,
-                "actual_p0": None,
-                "planned_char_id": pp.planned_char_id,
-                "char_name": pp.planned_char_name or "Unknown",
-                "char_id": pp.planned_char_id,
-                "planet_name": None,
-                "planet_type": pp.planned_planet_type or "",
-                "planet_type_display": (pp.planned_planet_type or "").capitalize(),
-                "system": pp.planned_system_name or "—",
-                "sec": None,
-                "sec_class": "",
-                "factory_schematics": [],
-                "upgrade_level": 0,
-            })
+            planet_assignments.append(
+                {
+                    "pp_pk": pp.pk,
+                    "planet_pk": None,
+                    "is_planned": True,
+                    "role": pp.role or "",
+                    "display_p0": pp.assigned_p0 or None,
+                    "planned_p0": pp.assigned_p0 or None,
+                    "actual_p0": None,
+                    "planned_char_id": pp.planned_char_id,
+                    "char_name": pp.planned_char_name or "Unknown",
+                    "char_id": pp.planned_char_id,
+                    "planet_name": None,
+                    "planet_type": pp.planned_planet_type or "",
+                    "planet_type_display": (pp.planned_planet_type or "").capitalize(),
+                    "system": pp.planned_system_name or "—",
+                    "sec": None,
+                    "sec_class": "",
+                    "factory_schematics": [],
+                    "upgrade_level": 0,
+                }
+            )
             continue
 
         char = planet.owner.character
@@ -59,31 +65,36 @@ def _build_project_data(project: PiProject, prices: dict) -> dict:
             {f.schematic_name for f in planet.factories.all() if f.schematic_name}
         )
         colonized_planets.append(planet)
-        planet_assignments.append({
-            "pp_pk": pp.pk,
-            "planet_pk": planet.pk,
-            "is_planned": False,
-            "planet_name": planet.planet_name,
-            "planet_type": planet.planet_type,
-            "planet_type_display": planet.get_planet_type_display(),
-            "system": planet.solar_system_name,
-            "sec": planet.sec_display,
-            "sec_class": planet.sec_class,
-            "char_name": char.character_name,
-            "char_id": char.character_id,
-            "role": role,
-            "display_p0": display_p0,
-            "planned_p0": pp.assigned_p0 or None,
-            "actual_p0": actual_p0,
-            "factory_schematics": factory_schematics,
-            "upgrade_level": planet.upgrade_level,
-        })
+        planet_assignments.append(
+            {
+                "pp_pk": pp.pk,
+                "planet_pk": planet.pk,
+                "is_planned": False,
+                "planet_name": planet.planet_name,
+                "planet_type": planet.planet_type,
+                "planet_type_display": planet.get_planet_type_display(),
+                "system": planet.solar_system_name,
+                "sec": planet.sec_display,
+                "sec_class": planet.sec_class,
+                "char_name": char.character_name,
+                "char_id": char.character_id,
+                "role": role,
+                "display_p0": display_p0,
+                "planned_p0": pp.assigned_p0 or None,
+                "actual_p0": actual_p0,
+                "factory_schematics": factory_schematics,
+                "upgrade_level": planet.upgrade_level,
+            }
+        )
 
     if not objectives:
         return {
-            "fabrication_flat": [], "fabrication_by_tier": {1: [], 2: [], 3: [], 4: []},
-            "fabrication_tiers": [], "extraction": [],
-            "total_isk_h_target": 0, "total_isk_h_actual": 0,
+            "fabrication_flat": [],
+            "fabrication_by_tier": {1: [], 2: [], 3: [], 4: []},
+            "fabrication_tiers": [],
+            "extraction": [],
+            "total_isk_h_target": 0,
+            "total_isk_h_actual": 0,
             "planet_assignments": planet_assignments,
         }
 
@@ -113,18 +124,20 @@ def _build_project_data(project: PiProject, prices: dict) -> dict:
         actual = actual_factories.get(schematic_name, 0)
         gap = actual - needed
         price = prices.get(schematic_name, 0)
-        fabrication_by_tier[tier].append({
-            "schematic": schematic_name,
-            "tier": tier,
-            "factories_needed": needed,
-            "actual_factories": actual,
-            "gap": gap,
-            "production_needed": round(needed * rate, 1),
-            "actual_production": round(actual * rate, 1),
-            "production_gap": round((actual - needed) * rate, 1),
-            "isk_h_needed": needed * rate * price,
-            "isk_h_actual": actual * rate * price,
-        })
+        fabrication_by_tier[tier].append(
+            {
+                "schematic": schematic_name,
+                "tier": tier,
+                "factories_needed": needed,
+                "actual_factories": actual,
+                "gap": gap,
+                "production_needed": round(needed * rate, 1),
+                "actual_production": round(actual * rate, 1),
+                "production_gap": round((actual - needed) * rate, 1),
+                "isk_h_needed": needed * rate * price,
+                "isk_h_actual": actual * rate * price,
+            }
+        )
 
     fabrication_flat = []
     for tier in (4, 3, 2, 1):
@@ -134,14 +147,16 @@ def _build_project_data(project: PiProject, prices: dict) -> dict:
     for resource, needed in sorted(required_extractions.items()):
         actual = actual_extractions.get(resource, 0)
         price = prices.get(resource, 0)
-        extraction.append({
-            "resource": resource,
-            "extraction_needed": round(needed, 0),
-            "actual_extraction": round(actual, 0),
-            "gap": round(actual - needed, 0),
-            "isk_h_needed": needed * price,
-            "isk_h_actual": actual * price,
-        })
+        extraction.append(
+            {
+                "resource": resource,
+                "extraction_needed": round(needed, 0),
+                "actual_extraction": round(actual, 0),
+                "gap": round(actual - needed, 0),
+                "isk_h_needed": needed * price,
+                "isk_h_actual": actual * price,
+            }
+        )
 
     total_isk_h_target = sum(qty * prices.get(name, 0) for name, qty in objectives)
     total_isk_h_actual = sum(
@@ -159,10 +174,15 @@ def _build_project_data(project: PiProject, prices: dict) -> dict:
 
     real_assignments = [a for a in planet_assignments if not a["is_planned"]]
     miners_total = sum(1 for a in real_assignments if a["role"] == "miner")
-    miners_active = sum(1 for a in real_assignments if a["role"] == "miner" and a["actual_p0"])
-    factories_total = sum(1 for a in real_assignments if a["role"] in ("factory", "factory_p4"))
+    miners_active = sum(
+        1 for a in real_assignments if a["role"] == "miner" and a["actual_p0"]
+    )
+    factories_total = sum(
+        1 for a in real_assignments if a["role"] in ("factory", "factory_p4")
+    )
     factories_configured = sum(
-        1 for a in real_assignments
+        1
+        for a in real_assignments
         if a["role"] in ("factory", "factory_p4") and a["factory_schematics"]
     )
     to_colonize = sum(1 for a in planet_assignments if a["is_planned"])
@@ -240,7 +260,9 @@ def create_project(request):
     description = request.POST.get("description", "").strip()
     if not name:
         return JsonResponse({"ok": False, "error": "Name is required."}, status=400)
-    project = PiProject.objects.create(user=request.user, name=name, description=description)
+    project = PiProject.objects.create(
+        user=request.user, name=name, description=description
+    )
     return JsonResponse({"ok": True, "pk": project.pk, "name": project.name})
 
 
@@ -279,7 +301,9 @@ def add_objective(request, pk):
 def edit_objective(request, pk):
     obj = get_object_or_404(PiProjectObjective, pk=pk, project__user=request.user)
     try:
-        obj.target_qty_per_hour = max(1, int(request.POST.get("target_qty_per_hour", obj.target_qty_per_hour)))
+        obj.target_qty_per_hour = max(
+            1, int(request.POST.get("target_qty_per_hour", obj.target_qty_per_hour))
+        )
     except (ValueError, TypeError):
         return JsonResponse({"ok": False, "error": "Invalid quantity."}, status=400)
     obj.save(update_fields=["target_qty_per_hour"])
@@ -303,14 +327,16 @@ def add_project_planet(request, pk):
     planet_pk = request.POST.get("planet_pk")
     planet = get_object_or_404(PiPlanet, pk=planet_pk, owner__user=request.user)
     PiProjectPlanet.objects.get_or_create(project=project, planet=planet)
-    return JsonResponse({
-        "ok": True,
-        "planet_pk": planet.pk,
-        "planet_name": planet.planet_name,
-        "system": planet.solar_system_name,
-        "planet_type": planet.get_planet_type_display(),
-        "character": planet.owner.character.character_name,
-    })
+    return JsonResponse(
+        {
+            "ok": True,
+            "planet_pk": planet.pk,
+            "planet_name": planet.planet_name,
+            "system": planet.solar_system_name,
+            "planet_type": planet.get_planet_type_display(),
+            "character": planet.owner.character.character_name,
+        }
+    )
 
 
 @login_required

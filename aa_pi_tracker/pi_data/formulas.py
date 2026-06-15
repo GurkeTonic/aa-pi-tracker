@@ -1,13 +1,20 @@
+# Standard Library
 import math
 from collections import defaultdict
 
-from .planet_resources import PLANET_TYPE_SLUG_TO_P0, TIER_VOLUMES, P0_TYPES, get_poco_base_costs
+from .planet_resources import (
+    P0_TYPES,
+    TIER_VOLUMES,
+    get_poco_base_costs,
+)
 from .recipes import SCHEMATICS
 
 # Planet capacity limits (CCU5 null-sec standard)
 # 8 BIFs: hard limit from link throughput — 8 × 6000 P0/h × 0.005 m³ = 240 m³/h < 250 m³/h base link cap
-MAX_BIFS_PER_MINER_PLANET = 8    # Basic Industry Facilities per miner planet
-MAX_AIFS_PER_FACTORY_PLANET = 24  # Advanced Industry Facilities per factory planet (CCU5)
+MAX_BIFS_PER_MINER_PLANET = 8  # Basic Industry Facilities per miner planet
+MAX_AIFS_PER_FACTORY_PLANET = (
+    24  # Advanced Industry Facilities per factory planet (CCU5)
+)
 
 # Max AIFs per factory planet by CCU level.
 # Derived from PG budget: floor((CCU_PG − LP_700 − Storage_700) / AIF_700)
@@ -19,11 +26,10 @@ def max_aifs_for_ccu(ccu_level: int) -> int:
     """Max Advanced Industry Facilities per factory planet for a given CCU level."""
     return _CCU_TO_MAX_AIFS.get(max(0, min(5, int(ccu_level))), 24)
 
+
 # P0 resource name → P1 schematic name (derived from tier-1 recipes)
 P0_TO_P1: dict[str, str] = {
-    next(iter(s["inputs"])): name
-    for name, s in SCHEMATICS.items()
-    if s["tier"] == 1
+    next(iter(s["inputs"])): name for name, s in SCHEMATICS.items() if s["tier"] == 1
 }
 
 # P0 consumed per P1 factory-hour (3000 P0 → 20 P1 per 30-min cycle = 6000 P0/h)
@@ -87,7 +93,9 @@ def get_item_volume(type_name: str) -> float:
     return TIER_VOLUMES.get(get_item_tier(type_name), 1.0)
 
 
-def production_plan(target_schematic: str, qty_per_hour: int = 1, max_aifs_per_planet: int | None = None) -> dict:
+def production_plan(
+    target_schematic: str, qty_per_hour: int = 1, max_aifs_per_planet: int | None = None
+) -> dict:
     """
     Optimal production plan for a target schematic at ``qty_per_hour``× output rate.
 
@@ -101,18 +109,18 @@ def production_plan(target_schematic: str, qty_per_hour: int = 1, max_aifs_per_p
     skill-aware planning.
 
     Returns:
-      miners_per_p0:       {p0_name: count}   — miner planets per P0 resource type
-      total_miners:        int
-      aifs:                {product_name: count} — Advanced Industry Facilities (tier 2/3, ceiled)
-      htpps:               {product_name: count} — High-Tech Production Plants (tier 4, ceiled)
-      factories:           dict — full expand_production result incl. P1 BIF counts
-      p0_rates:            dict — P0/h demand at 1× rate
-      total_aifs:          int  — sum of aifs (AIF-only, excl. HTPP)
-      factory_planets:     int  — ceil(total_aifs / max_aifs_per_planet) + P4 planet if needed
-      max_aifs_per_planet: int  — effective AIF capacity used for this plan
-      total_planets:       int
-      output_per_hour:     float
-      output_per_day:      float
+        miners_per_p0: {p0_name: count} — miner planets per P0 resource type
+        total_miners: int
+        aifs: {product_name: count} — Advanced Industry Facilities (tier 2/3, ceiled)
+        htpps: {product_name: count} — High-Tech Production Plants (tier 4, ceiled)
+        factories: dict — full expand_production result incl. P1 BIF counts
+        p0_rates: dict — P0/h demand at 1x rate
+        total_aifs: int — sum of aifs (AIF-only, excl. HTPP)
+        factory_planets: int — ceil(total_aifs / max_aifs_per_planet) + P4 planet if needed
+        max_aifs_per_planet: int — effective AIF capacity used for this plan
+        total_planets: int
+        output_per_hour: float
+        output_per_day: float
     """
     if max_aifs_per_planet is None:
         max_aifs_per_planet = MAX_AIFS_PER_FACTORY_PLANET
@@ -142,7 +150,9 @@ def production_plan(target_schematic: str, qty_per_hour: int = 1, max_aifs_per_p
     # P1: BIFs on miner planet, no factory planet. P2+: at least 1 factory planet.
     # P4 products: the last factory planet is designated P4 (Barren/Temperate only) and
     # hosts the remaining AIFs + HTPPs — no separate P4 planet is added, keeping slot count minimal.
-    factory_planets = max(1, math.ceil(total_aifs / max_aifs_per_planet)) if (aifs or htpps) else 0
+    factory_planets = (
+        max(1, math.ceil(total_aifs / max_aifs_per_planet)) if (aifs or htpps) else 0
+    )
     total_miners = sum(miners_per_p0.values())
 
     return {
@@ -166,12 +176,12 @@ def calculate_poco_tax(plan: dict, tier: int, tax_rate: float) -> float:
     Daily POCO tax for a production plan.
 
     Crossing model (standard: miner planets + consolidated factory planets):
-    - P1 export from miner planets + P1 import to factory planets (1.5× combined)
-      Only applies when the final product is P2 or higher (tier > 1).
-      Includes P1 that flows directly as raw input into P4 schematics.
-    - P3 export + import between factory and factory_p4 planets (1.5×)
-      Only when tier == 4 and factory_planets > 1.
-    - Final product export from the last factory planet (1×).
+        - P1 export from miner planets + P1 import to factory planets (1.5x combined)
+            Only applies when the final product is P2 or higher (tier > 1).
+            Includes P1 that flows directly as raw input into P4 schematics.
+        - P3 export + import between factory and factory_p4 planets (1.5x)
+            Only when tier == 4 and factory_planets > 1.
+        - Final product export from the last factory planet (1x).
 
     tax_rate: percentage value (e.g. 5 for 5%)
     """
@@ -234,16 +244,18 @@ def suggest_factory_setup(extraction_rates: dict[str, float]) -> dict:
                 continue
             out_h = optimal * output_per_hour(p1_name)
             p1_output[p1_name] = out_h
-            p1_chains.append({
-                "product": p1_name,
-                "p0_source": p0,
-                "optimal_factories_float": round(optimal_float, 2),
-                "optimal_factories": optimal,
-                "output_per_hour": out_h,
-                "p0_consumed_per_hour": optimal * P0_PER_P1_H,
-                "p0_available_per_hour": rate,
-                "utilization_pct": round(optimal * P0_PER_P1_H / rate * 100, 1),
-            })
+            p1_chains.append(
+                {
+                    "product": p1_name,
+                    "p0_source": p0,
+                    "optimal_factories_float": round(optimal_float, 2),
+                    "optimal_factories": optimal,
+                    "output_per_hour": out_h,
+                    "p0_consumed_per_hour": optimal * P0_PER_P1_H,
+                    "p0_available_per_hour": rate,
+                    "utilization_pct": round(optimal * P0_PER_P1_H / rate * 100, 1),
+                }
+            )
 
     p2_chains: list[dict] = []
     for p2_name, p2_data in SCHEMATICS.items():
@@ -258,21 +270,23 @@ def suggest_factory_setup(extraction_rates: dict[str, float]) -> dict:
         if opt == 0:
             continue
         bottleneck = min(limiting, key=limiting.get)
-        p2_chains.append({
-            "product": p2_name,
-            "optimal_factories_float": round(opt_float, 2),
-            "optimal_factories": opt,
-            "output_per_hour": opt * output_per_hour(p2_name),
-            "bottleneck_input": bottleneck,
-            "inputs": [
-                {
-                    "p1": p1,
-                    "needed_per_hour": opt * P1_PER_P2_H,
-                    "available_per_hour": p1_output.get(p1, 0),
-                }
-                for p1 in inputs
-            ],
-        })
+        p2_chains.append(
+            {
+                "product": p2_name,
+                "optimal_factories_float": round(opt_float, 2),
+                "optimal_factories": opt,
+                "output_per_hour": opt * output_per_hour(p2_name),
+                "bottleneck_input": bottleneck,
+                "inputs": [
+                    {
+                        "p1": p1,
+                        "needed_per_hour": opt * P1_PER_P2_H,
+                        "available_per_hour": p1_output.get(p1, 0),
+                    }
+                    for p1 in inputs
+                ],
+            }
+        )
 
     p2_chains.sort(key=lambda x: -x["output_per_hour"])
     return {"p1_chains": p1_chains, "p2_chains": p2_chains}
